@@ -911,6 +911,168 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
   // Non-TikTok export`);
 
+    // DOM-to-image renderers do not reliably implement backdrop blur. Keep
+    // notification glass neutral and translucent in both states so the image
+    // beneath it stays visible and preview/export remain identical.
+    template = template.replace("background: overlayDark ? (exporting ? 'rgba(44,44,46,0.9)' : 'rgba(44,44,46,0.66)') : (exporting ? 'rgba(250,250,252,0.9)' : 'rgba(250,250,252,0.66)')", "background: overlayDark ? 'rgba(44,44,46,0.78)' : 'rgba(250,250,252,0.78)'");
+    template = template.replace("backdropFilter: exporting ? 'none' : 'blur(26px) saturate(180%)', WebkitBackdropFilter: exporting ? 'none' : 'blur(26px) saturate(180%)'", "backdropFilter: 'none', WebkitBackdropFilter: 'none'");
+    template = template.replace("background: exporting ? 'rgba(120,122,130,.34)' : 'rgba(255,255,255,.09)'", "background: 'rgba(255,255,255,.12)'");
+    template = template.replace("backdropFilter: exporting ? 'none' : 'blur(22px)', WebkitBackdropFilter: exporting ? 'none' : 'blur(22px)'", "backdropFilter: 'none', WebkitBackdropFilter: 'none'");
+    template = template.replace("background: exporting ? 'rgba(120,122,130,.42)' : 'rgba(255,255,255,.12)'", "background: 'rgba(255,255,255,.18)'");
+    template = template.replace("backdropFilter: exporting ? 'none' : 'blur(26px) saturate(1.5)', WebkitBackdropFilter: exporting ? 'none' : 'blur(26px) saturate(1.5)'", "backdropFilter: 'none', WebkitBackdropFilter: 'none'");
+    template = template.replace("background: exporting ? 'rgba(120,122,130,.42)' : 'rgba(255,255,255,.16)'", "background: 'rgba(255,255,255,.18)'");
+    template = template.replace("backdropFilter: exporting ? 'none' : 'blur(20px) saturate(1.5)', WebkitBackdropFilter: exporting ? 'none' : 'blur(20px) saturate(1.5)'", "backdropFilter: 'none', WebkitBackdropFilter: 'none'");
+    template = template.replace("const lockBgCss = 'linear-gradient(165deg,#3a2b52 0%,#1a2340 48%,#070a14 100%)';", "const lockBgCss = 'linear-gradient(165deg,#3a2b52 0%,#1a2340 48%,#070a14 100%)';\n    const lockMirrorBackground = ui.lockWallpaper ? 'linear-gradient(rgba(255,255,255,.14),rgba(255,255,255,.14)),url(' + ui.lockWallpaper + ')' : 'none';");
+    template = template.replace("background: 'rgba(255,255,255,.18)', border: '1px solid rgba(255,255,255,.24)'", "backgroundColor: 'rgba(255,255,255,.18)', '--pl-lock-mirror': lockMirrorBackground, border: '1px solid rgba(255,255,255,.24)'");
+    template = template.replace("background: 'rgba(255,255,255,.18)', border: '1px solid rgba(255,255,255,.20)'", "backgroundColor: 'rgba(255,255,255,.18)', '--pl-lock-mirror': lockMirrorBackground, border: '1px solid rgba(255,255,255,.24)'");
+    template = template.replace('<div style="{{ lockNotifCardStyle }}">', '<div class="pl-lock-notif-card" style="{{ lockNotifCardStyle }}">');
+    template = template.replace('  [data-pl-theme] .pl-hide { display: none !important; }\n</style>', `  [data-pl-theme] .pl-hide { display: none !important; }
+  .pl-lock-notif-card { position: relative; overflow: hidden; isolation: isolate; }
+  .pl-lock-notif-card::before { content: ""; position: absolute; inset: -14px; z-index: 0; pointer-events: none; background-image: var(--pl-lock-mirror, none); background-position: var(--pl-lock-mirror-pos, center); background-size: var(--pl-lock-mirror-size, cover); background-repeat: no-repeat; filter: blur(12px); -webkit-filter: blur(12px); }
+  .pl-lock-notif-card > * { position: relative; z-index: 1; }
+  .pl-overlay-notif-card { position: relative; overflow: hidden; isolation: isolate; }
+  .pl-overlay-notif-card::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background-image: var(--pl-overlay-mirror, none); background-position: 0 0; background-size: 100% 100%; background-repeat: no-repeat; }
+  .pl-overlay-notif-card > * { position: relative; z-index: 1; }
+</style>`);
+    template = template.replace(/<div style="\{\{ overlayWrapStyle \}\}">/g, '<div class="pl-overlay-notif-wrap" style="{{ overlayWrapStyle }}">');
+    template = template.replace(/<div style="\{\{ overlayCardStyle \}\}">/g, '<div class="pl-overlay-notif-card" style="{{ overlayCardStyle }}">');
+    template = template.replace("background: overlayDark ? 'rgba(44,44,46,0.78)' : 'rgba(250,250,252,0.78)'", "background: overlayDark ? 'rgba(44,44,46,0.66)' : 'rgba(250,250,252,0.66)'");
+    template = template.replace("  normalizeWorlds(list) {", `  queueOverlayNotificationBlur() {
+    const ui = this.state.ui || {};
+    const active = this.state.platform !== 'lockscreen' && this.state.platform !== 'notifications' && !!ui.showOverlay && (ui.overlayNotifs || []).length;
+    this._overlayBlurRequestId = (this._overlayBlurRequestId || 0) + 1;
+    if (!active) { clearTimeout(this._overlayBlurTimer); this.clearOverlayNotificationBlur(); return; }
+    const requestId = this._overlayBlurRequestId;
+    clearTimeout(this._overlayBlurTimer);
+    this._overlayBlurTimer = setTimeout(() => this.syncOverlayNotificationBlur(false, requestId), 180);
+  }
+  clearOverlayNotificationBlur() {
+    const stage = this.stageRef && this.stageRef.current;
+    if (!stage) return;
+    stage.querySelectorAll('.pl-overlay-notif-card').forEach(card => { card.style.removeProperty('--pl-overlay-mirror'); });
+  }
+  async syncOverlayNotificationBlur(force, requestedId) {
+    const requestId = requestedId || ((this._overlayBlurRequestId || 0) + 1);
+    if (!requestedId) this._overlayBlurRequestId = requestId;
+    if (this._overlayBlurPromise) {
+      this._overlayBlurNeedsRefresh = true;
+      if (force) { try { await this._overlayBlurPromise; } catch (e) {} return this.syncOverlayNotificationBlur(true); }
+      return this._overlayBlurPromise;
+    }
+    const ui = this.state.ui || {}, stage = this.stageRef && this.stageRef.current;
+    const active = this.state.platform !== 'lockscreen' && this.state.platform !== 'notifications' && !!ui.showOverlay;
+    const wrap = stage && stage.querySelector('.pl-overlay-notif-wrap'), cards = stage && stage.querySelectorAll('.pl-overlay-notif-card');
+    if (!stage || !wrap || !cards || !cards.length || !active || !window.htmlToImage) { if (!active) this.clearOverlayNotificationBlur(); return; }
+    const rect = stage.getBoundingClientRect(), stageW = stage.offsetWidth || rect.width, stageH = stage.offsetHeight || rect.height;
+    if (!stageW || !stageH || !rect.width || !rect.height) return;
+    const signature = this.state.platform + '|' + stageW + 'x' + stageH + '|' + [!!ui.dark, !!ui.discordDark, !!ui.fbDark, !!ui.header, !!ui.statusBar, !!ui.inputBar, ui.tiktok ? 1 : 0].join(':') + '|' + (ui.overlayNotifs || []).map(n => [n.app,n.title,n.sub,n.text,n.time].join(':')).join('|') + '|' + (this.state.messages || []).map(m => (m.text || '') + ':' + (m.image || '')).join('|');
+    if (!force && this._overlayBlurAppliedRequest === requestId) return;
+    const capturedGeometry = Array.from(cards).map(card => {
+      const cardRect = card.getBoundingClientRect(), pseudo = getComputedStyle(card, '::before');
+      const cardScaleX = card.offsetWidth ? cardRect.width / card.offsetWidth : 1, cardScaleY = card.offsetHeight ? cardRect.height / card.offsetHeight : 1;
+      return { card: card, x: (cardRect.left - rect.left + card.clientLeft * cardScaleX) / rect.width, y: (cardRect.top - rect.top + card.clientTop * cardScaleY) / rect.height, w: (Number.parseFloat(pseudo.width) * cardScaleX) / rect.width, h: (Number.parseFloat(pseudo.height) * cardScaleY) / rect.height };
+    });
+    const task = (async () => {
+      const oldVisibility = wrap.style.visibility; wrap.style.visibility = 'hidden'; let snapshot = '';
+      try { snapshot = await window.htmlToImage.toPng(stage, { pixelRatio: 1, cacheBust: true, skipFonts: true, width: stageW, height: stageH, style: { width: stageW + 'px', height: stageH + 'px', maxWidth: 'none', margin: '0', position: 'relative', left: '0', right: 'auto', transform: 'none' }, filter: node => !(node.classList && node.classList.contains('pl-overlay-notif-wrap')) }); }
+      catch (e) { return; } finally { wrap.style.visibility = oldVisibility; }
+      if (!snapshot) return;
+      const screenshot = new Image();
+      await new Promise(resolve => { screenshot.onload = resolve; screenshot.onerror = resolve; screenshot.src = snapshot; });
+      if (!screenshot.naturalWidth || !screenshot.naturalHeight) return;
+      if (requestId !== this._overlayBlurRequestId) { this._overlayBlurNeedsRefresh = true; return; }
+      const reduced = document.createElement('canvas');
+      reduced.width = Math.max(1, Math.round(screenshot.naturalWidth / 18));
+      reduced.height = Math.max(1, Math.round(screenshot.naturalHeight / 18));
+      const reducedCtx = reduced.getContext('2d');
+      reducedCtx.imageSmoothingEnabled = true;
+      reducedCtx.drawImage(screenshot, 0, 0, reduced.width, reduced.height);
+      const blurredStage = document.createElement('canvas');
+      blurredStage.width = screenshot.naturalWidth; blurredStage.height = screenshot.naturalHeight;
+      const blurredCtx = blurredStage.getContext('2d');
+      blurredCtx.imageSmoothingEnabled = true; blurredCtx.imageSmoothingQuality = 'high';
+      blurredCtx.drawImage(reduced, 0, 0, reduced.width, reduced.height, 0, 0, blurredStage.width, blurredStage.height);
+      capturedGeometry.forEach(item => {
+        const card = item.card;
+        if (!card.isConnected || !stage.contains(card)) return;
+        const sourceX = item.x * blurredStage.width, sourceY = item.y * blurredStage.height;
+        const sourceW = item.w * blurredStage.width, sourceH = item.h * blurredStage.height;
+        const crop = document.createElement('canvas');
+        crop.width = Math.max(1, Math.round(sourceW)); crop.height = Math.max(1, Math.round(sourceH));
+        crop.getContext('2d').drawImage(blurredStage, sourceX, sourceY, sourceW, sourceH, 0, 0, crop.width, crop.height);
+        card.style.setProperty('--pl-overlay-mirror', 'url("' + crop.toDataURL('image/png') + '")');
+      });
+      this._overlayBlurSignature = signature;
+      this._overlayBlurAppliedRequest = requestId;
+    })();
+    this._overlayBlurPromise = task;
+    try { await task; } finally {
+      this._overlayBlurPromise = null;
+      if (this._overlayBlurNeedsRefresh) {
+        this._overlayBlurNeedsRefresh = false;
+        clearTimeout(this._overlayBlurTimer);
+        const latestId = this._overlayBlurRequestId;
+        this._overlayBlurTimer = setTimeout(() => this.syncOverlayNotificationBlur(false, latestId), 0);
+      }
+    }
+  }
+
+  normalizeWorlds(list) {`);
+    template = template.replace("  componentDidUpdate() {\n    this.updateMini();", "  componentDidUpdate() {\n    this.syncLockNotificationBlur();\n    this.queueOverlayNotificationBlur();\n    this.updateMini();");
+    template = template.replace("    await new Promise(r => setTimeout(r, 80));\n    // Non-TikTok", "    await new Promise(r => setTimeout(r, 80));\n    this.syncLockNotificationBlur();\n    await this.syncOverlayNotificationBlur(true);\n    await new Promise(r => requestAnimationFrame(r));\n    // Non-TikTok");
+    template = template.replace("  normalizeWorlds(list) {", `  syncLockNotificationBlur() {
+    const ui = this.state.ui || {};
+    const stage = this.stageRef && this.stageRef.current;
+    if (!stage) return;
+    const cards = stage.querySelectorAll('.pl-lock-notif-card');
+    if (!cards.length) return;
+    if (this.state.platform !== 'lockscreen' || !ui.lockWallpaper) {
+      cards.forEach(card => { card.style.removeProperty('--pl-lock-mirror-size'); card.style.removeProperty('--pl-lock-mirror-pos'); });
+      return;
+    }
+    const source = ui.lockWallpaper;
+    let image = this._lockBlurImage;
+    if (!image || image._parallelSource !== source) {
+      image = new Image(); image._parallelSource = source;
+      image.onload = () => { if (this.state.ui && this.state.ui.lockWallpaper === source) this.syncLockNotificationBlur(); };
+      this._lockBlurImage = image; image.src = source;
+    }
+    if (!image.complete || !image.naturalWidth || !image.naturalHeight) return;
+    const stageRect = stage.getBoundingClientRect();
+    if (!stageRect.width || !stageRect.height) return;
+    const stageW = stage.offsetWidth || stageRect.width, stageH = stage.offsetHeight || stageRect.height;
+    const scaleX = stageW / stageRect.width, scaleY = stageH / stageRect.height;
+    const cover = Math.max(stageW / image.naturalWidth, stageH / image.naturalHeight);
+    const imageW = image.naturalWidth * cover, imageH = image.naturalHeight * cover;
+    const imageX = (stageW - imageW) / 2, imageY = (stageH - imageH) / 2;
+    cards.forEach(card => {
+      const rect = card.getBoundingClientRect();
+      const cardX = (rect.left - stageRect.left) * scaleX - 14, cardY = (rect.top - stageRect.top) * scaleY - 14;
+      card.style.setProperty('--pl-lock-mirror-size', Math.ceil(imageW) + 'px ' + Math.ceil(imageH) + 'px');
+      card.style.setProperty('--pl-lock-mirror-pos', Math.round(imageX - cardX) + 'px ' + Math.round(imageY - cardY) + 'px');
+    });
+  }
+
+  normalizeWorlds(list) {`);
+    template = template.replace("usePerson: !!per, notPerson: !per,", "usePerson: !!per && n.app !== 'discord', notPerson: !per || n.app === 'discord',");
+    template = template.replace("isMsg: !per && n.app === 'messages', notMsg: !per && n.app !== 'messages',", "isMsg: !per && n.app === 'messages', notMsg: (!per || n.app === 'discord') && n.app !== 'messages',");
+    // The compact notification icon used a 24-unit viewbox for Discord's
+    // 256-unit path. Reuse the front-facing Join Discord mark at its native
+    // viewbox for both the main app tile and person badge.
+    const discordPath = 'M216.856 16.597A208.502 208.502 0 0 0 164.042 0c-2.275 4.113-4.933 9.645-6.766 14.046-19.692-2.961-39.203-2.961-58.533 0-1.832-4.4-4.55-9.933-6.846-14.046a207.809 207.809 0 0 0-52.855 16.638C5.618 67.147-3.443 116.4 1.087 164.956c22.169 16.555 43.653 26.612 64.775 33.193A161.094 161.094 0 0 0 79.735 175.3a136.413 136.413 0 0 1-21.846-10.632 108.636 108.636 0 0 0 5.356-4.237c42.122 19.702 87.89 19.702 129.51 0a132.532 132.532 0 0 0 5.355 4.237 136.07 136.07 0 0 1-21.886 10.653c4.006 8.02 8.638 15.67 13.873 22.848 21.142-6.58 42.646-16.637 64.815-33.213 5.316-56.288-9.08-105.09-38.056-148.36ZM85.474 135.095c-12.645 0-23.015-11.805-23.015-26.18s10.149-26.2 23.015-26.2c12.867 0 23.236 11.804 23.015 26.2.02 14.375-10.148 26.18-23.015 26.18Zm85.051 0c-12.645 0-23.014-11.805-23.014-26.18s10.148-26.2 23.014-26.2c12.867 0 23.236 11.804 23.015 26.2 0 14.375-10.148 26.18-23.015 26.18Z';
+    template = template.replace(/(<sc-if value="\{\{ n\.isDc \}\}" hint-placeholder-val="\{\{ false \}\}"><svg width="(?:13|24)" height="(?:13|24)" )viewBox="0 0 24 24" fill="#fff"><path d="[^"]*"/g, '$1viewBox="0 -28.5 256 256" fill="#fff"><path d="' + discordPath + '"');
+    const clydeIcon = '<svg width="29" height="29" viewBox="0 0 100 80" aria-label="Discord" role="img"><path fill="#fff" d="M17 14 35 8l7 12a42 42 0 0 1 16 0l7-12 18 6c7 12 9 27 7 43L75 67l-10-9a41 41 0 0 1-30 0l-10 9L10 57c-2-16 0-31 7-43Z"></path><circle fill="#5865f2" cx="38" cy="40" r="7"></circle><circle fill="#5865f2" cx="62" cy="40" r="7"></circle></svg>';
+    template = template.replace(/<span style="\{\{ appDiscord\.sqStyle \}\}"><svg[\s\S]*?<\/svg><\/span>/, '<span style="{{ appDiscord.sqStyle }}">' + clydeIcon + '</span>');
+    template = template.replace('<div style="{{ r.replyStyle }}"><span style="{{ r.replyLabelStyle }}">↰ {{ r.replyLabel }}</span> {{ r.replyText }}</div>', '<div style="{{ r.replyStyle }}"><svg style="{{ r.replyConnectorStyle }}" viewBox="0 0 32 22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M31 2H10a8 8 0 0 0-8 8v10"></path></svg><sc-if value="{{ r.hasReplyAvatar }}" hint-placeholder-val="{{ false }}"><span style="{{ r.replyAvatarStyle }}">{{ r.replyAvatarText }}</span></sc-if><span style="{{ r.replyLabelStyle }}">@{{ r.replyLabel }}</span><span style="{{ r.replyTextStyle }}">{{ r.replyText }}</span></div>');
+    template = template.replace("replyLabel: quotedPerson ? quotedPerson.name : '', replyLabelStyle: {}, replyStyle: {},", "replyLabel: quotedPerson ? quotedPerson.name : '', replyLabelStyle: {}, replyStyle: {}, replyConnectorStyle: {}, replyAvatarStyle: {}, replyAvatarText: '', replyTextStyle: {}, hasReplyAvatar: false,");
+    template = template.replace("replyLabelStyle: { color: quotedPerson ? quotedPerson.color : dc.time, fontWeight: 600 },", `replyLabelStyle: { color: quotedPerson ? quotedPerson.color : dc.time, fontWeight: 600, fontSize: '12px', flex: 'none' },
+          replyConnectorStyle: { color: dc.time, width: '32px', height: '22px', flex: 'none', overflow: 'visible', transform: 'translateY(5px)' },
+          hasReplyAvatar: !!quotedPerson,
+          replyAvatarStyle: quotedPerson ? Object.assign({}, this.avatarVM(quotedPerson, 16, 7).style, { flex: 'none' }) : {},
+          replyAvatarText: quotedPerson ? this.avatarVM(quotedPerson, 16, 7).text : '',
+          replyTextStyle: { color: dc.time, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', minWidth: 0 },`);
+    template = template.replace("display: 'flex', gap: '6px', alignItems: 'baseline', padding: '6px 16px 1px 72px',\n            fontSize: '13px', color: dc.time, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis'", "display: 'flex', gap: '5px', alignItems: 'center', padding: '5px 16px 2px 27px',\n            fontSize: '12px', color: dc.time, overflow: 'hidden', whiteSpace: 'nowrap', minWidth: 0");
+
     template = template.replace(/\s+integrity="[^"]*"/gi, '').replace(/\s+crossorigin="[^"]*"/gi, '');
 
     const resourceScript = '<script>window.__resources = ' +
