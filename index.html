@@ -823,6 +823,20 @@ document.addEventListener('DOMContentLoaded', async function() {
             <span style="font-size:14px">Text size</span>
             <span style="display:flex;align-items:center;gap:8px"><input type="range" min="80" max="130" step="5" value="{{ fontSizeVal }}" onChange="{{ onFontSize }}" style="width:120px;accent-color:var(--color-accent)"><span style="width:38px;text-align:right;font-size:12px">{{ fontSizeVal }}%</span></span>
           </div>`);
+    template = template.replace(/<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 0">\s*<span style="font-size:14px">Mockup font<\/span>\s*<select value="\{\{ mockupFont \}\}" onChange="\{\{ onFontChange \}\}"[^>]*><sc-for list="\{\{ fontOpts \}\}" as="f" hint-placeholder-count="4"><option value="\{\{ f\.v \}\}">\{\{ f\.label \}\}<\/option><\/sc-for><\/select>\s*<\/div>/, `<div style="display:flex;flex-direction:column;gap:7px;padding:7px 0">
+            <span style="font-size:14px">Mockup font</span>
+            <span class="pl-pillscroll" style="display:flex;gap:4px;border:1px solid var(--color-divider);border-radius:14px;padding:4px;width:100%;overflow-x:auto"><sc-for list="{{ mobileFontOpts }}" as="f" hint-placeholder-count="4"><button style="{{ f.style }}" onClick="{{ f.onPick }}">{{ f.label }}</button></sc-for></span>
+          </div>`);
+    template = template.replace('onFontChange: e => this.setUI(\'mockupFont\', e.target.value),', `onFontChange: e => { this._fontCSS = null; this.setUI('mockupFont', e.target.value); },
+      mobileFontOpts: PL_FONT_ORDER.map(k => ({
+        label: PL_FONTS[k].label, onPick: () => { this._fontCSS = null; this.setUI('mockupFont', k); },
+        style: { flex: 'none', padding: '7px 11px', borderRadius: '10px', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '12px', fontFamily: 'var(--font-heading)', fontWeight: 700, border: '1px solid ' + (mockupFont === k ? 'var(--color-accent)' : 'transparent'), background: mockupFont === k ? 'var(--color-accent)' : 'transparent', color: mockupFont === k ? '#3a2530' : 'var(--color-text)' }
+      })),`);
+    template = template.replace("if (this._fontCSS) return;\n    try {", `if (this._fontCSS) return;
+    try {
+      const key = (this.state.ui && this.state.ui.mockupFont) || 'sf';
+      const font = (PL_FONTS[key] || PL_FONTS.sf).css;
+      if (document.fonts && document.fonts.load) await Promise.race([document.fonts.load('16px ' + font), new Promise(resolve => setTimeout(resolve, 4500))]);`);
     // Mobile SVG captures can substitute a wider system font unless we carry
     // the preview's embedded font through to html-to-image. Lock the title
     // rows too, so metadata never wraps only in the downloaded PNG.
