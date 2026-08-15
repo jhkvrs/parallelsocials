@@ -1054,6 +1054,71 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
   normalizeWorlds(list) {`);
+    // The standalone Notifications mockup sits on the TikTok canvas itself.
+    // Give its cards the same sampled, baked blur as in-app overlays so a
+    // custom canvas colour or uploaded image is faithfully visible in both
+    // the preview and exported PNG.
+    template = template.replace("    this.queueOverlayNotificationBlur();\n    this.updateMini();", "    this.queueOverlayNotificationBlur();\n    this.queueStandaloneNotificationBlur();\n    this.updateMini();");
+    template = template.replace("    await this.syncOverlayNotificationBlur(true);\n    await new Promise(r => requestAnimationFrame(r));", "    await this.syncOverlayNotificationBlur(true);\n    await this.syncStandaloneNotificationBlur(true);\n    await new Promise(r => requestAnimationFrame(r));");
+    template = template.replace("  normalizeWorlds(list) {", `  queueStandaloneNotificationBlur() {
+    const ui = this.state.ui || {};
+    const active = this.state.platform === 'notifications' && !!ui.tiktok && (ui.overlayNotifs || []).length;
+    this._standaloneNotifBlurRequestId = (this._standaloneNotifBlurRequestId || 0) + 1;
+    if (!active) { clearTimeout(this._standaloneNotifBlurTimer); this.clearStandaloneNotificationBlur(); return; }
+    const requestId = this._standaloneNotifBlurRequestId;
+    clearTimeout(this._standaloneNotifBlurTimer);
+    this._standaloneNotifBlurTimer = setTimeout(() => this.syncStandaloneNotificationBlur(false, requestId), 180);
+  }
+  clearStandaloneNotificationBlur() {
+    const stage = this.stageRef && this.stageRef.current;
+    if (stage) stage.querySelectorAll('.pl-overlay-notif-card').forEach(card => card.style.removeProperty('--pl-overlay-mirror'));
+  }
+  async syncStandaloneNotificationBlur(force, requestedId) {
+    const requestId = requestedId || ((this._standaloneNotifBlurRequestId || 0) + 1);
+    if (!requestedId) this._standaloneNotifBlurRequestId = requestId;
+    if (this._standaloneNotifBlurPromise) {
+      this._standaloneNotifBlurNeedsRefresh = true;
+      if (force) { try { await this._standaloneNotifBlurPromise; } catch (e) {} return this.syncStandaloneNotificationBlur(true); }
+      return this._standaloneNotifBlurPromise;
+    }
+    const ui = this.state.ui || {}, stage = this.stageRef && this.stageRef.current, box = this.boxRef && this.boxRef.current;
+    const wrap = stage && stage.querySelector('.pl-overlay-notif-wrap'), cards = stage && stage.querySelectorAll('.pl-overlay-notif-card');
+    const active = this.state.platform === 'notifications' && !!ui.tiktok;
+    if (!stage || !box || !wrap || !cards || !cards.length || !active || !window.htmlToImage) { if (!active) this.clearStandaloneNotificationBlur(); return; }
+    const boxRect = box.getBoundingClientRect(), boxW = box.offsetWidth || boxRect.width, boxH = box.offsetHeight || boxRect.height;
+    if (!boxW || !boxH || !boxRect.width || !boxRect.height) return;
+    const geometry = Array.from(cards).map(card => {
+      const cardRect = card.getBoundingClientRect(), pseudo = getComputedStyle(card, '::before');
+      const scaleX = card.offsetWidth ? cardRect.width / card.offsetWidth : 1, scaleY = card.offsetHeight ? cardRect.height / card.offsetHeight : 1;
+      return { card: card, x: (cardRect.left - boxRect.left + card.clientLeft * scaleX) / boxRect.width, y: (cardRect.top - boxRect.top + card.clientTop * scaleY) / boxRect.height, w: (parseFloat(pseudo.width) * scaleX) / boxRect.width, h: (parseFloat(pseudo.height) * scaleY) / boxRect.height, outputW: parseFloat(pseudo.width), outputH: parseFloat(pseudo.height) };
+    });
+    const task = (async () => {
+      const previous = wrap.style.visibility; wrap.style.visibility = 'hidden'; let snapshot = '';
+      try { snapshot = await window.htmlToImage.toPng(box, { pixelRatio: 1, cacheBust: true, skipFonts: true, width: boxW, height: boxH, style: { width: boxW + 'px', height: boxH + 'px', maxWidth: 'none', margin: '0', position: 'relative', left: '0', right: 'auto', transform: 'none' }, filter: node => !(node.classList && node.classList.contains('pl-overlay-notif-wrap')) }); }
+      catch (e) { return; } finally { wrap.style.visibility = previous; }
+      if (!snapshot || requestId !== this._standaloneNotifBlurRequestId) { if (requestId !== this._standaloneNotifBlurRequestId) this._standaloneNotifBlurNeedsRefresh = true; return; }
+      const image = new Image();
+      await new Promise(resolve => { image.onload = resolve; image.onerror = resolve; image.src = snapshot; });
+      if (!image.naturalWidth || !image.naturalHeight) return;
+      const small = document.createElement('canvas'); small.width = Math.max(1, Math.round(image.naturalWidth / 18)); small.height = Math.max(1, Math.round(image.naturalHeight / 18));
+      const smallCtx = small.getContext('2d'); smallCtx.imageSmoothingEnabled = true; smallCtx.drawImage(image, 0, 0, small.width, small.height);
+      const blurred = document.createElement('canvas'); blurred.width = image.naturalWidth; blurred.height = image.naturalHeight;
+      const blurredCtx = blurred.getContext('2d'); blurredCtx.imageSmoothingEnabled = true; blurredCtx.imageSmoothingQuality = 'high'; blurredCtx.drawImage(small, 0, 0, small.width, small.height, 0, 0, blurred.width, blurred.height);
+      geometry.forEach(item => {
+        if (!item.card.isConnected || !stage.contains(item.card)) return;
+        const crop = document.createElement('canvas'); crop.width = Math.max(1, Math.round(item.outputW)); crop.height = Math.max(1, Math.round(item.outputH));
+        crop.getContext('2d').drawImage(blurred, item.x * blurred.width, item.y * blurred.height, item.w * blurred.width, item.h * blurred.height, 0, 0, crop.width, crop.height);
+        item.card.style.setProperty('--pl-overlay-mirror', 'url("' + crop.toDataURL('image/png') + '")');
+      });
+    })();
+    this._standaloneNotifBlurPromise = task;
+    try { await task; } finally {
+      this._standaloneNotifBlurPromise = null;
+      if (this._standaloneNotifBlurNeedsRefresh) { this._standaloneNotifBlurNeedsRefresh = false; clearTimeout(this._standaloneNotifBlurTimer); const latest = this._standaloneNotifBlurRequestId; this._standaloneNotifBlurTimer = setTimeout(() => this.syncStandaloneNotificationBlur(false, latest), 0); }
+    }
+  }
+
+  normalizeWorlds(list) {`);
     template = template.replace("usePerson: !!per, notPerson: !per,", "usePerson: !!per && n.app !== 'discord', notPerson: !per || n.app === 'discord',");
     template = template.replace("isMsg: !per && n.app === 'messages', notMsg: !per && n.app !== 'messages',", "isMsg: !per && n.app === 'messages', notMsg: (!per || n.app === 'discord') && n.app !== 'messages',");
     // The compact notification icon used a 24-unit viewbox for Discord's
