@@ -789,6 +789,27 @@ document.addEventListener('DOMContentLoaded', async function() {
               </div>
             </sc-if>$2`);
     template = template.replace('<input class="input" value="{{ p.name }}" onChange="{{ p.onName }}" style="flex:1;min-width:0">', '<input class="input" value="{{ p.name }}" onChange="{{ p.onName }}" style="flex:1 1 110px;min-width:110px">');
+    // Facebook Profile uses the same per-person profile selection model as
+    // Instagram and X, rather than always using the current chat partner.
+    template = template.replace('const fbPerson = other || people[0];', 'const fbPerson = byId(ui.fbProfileId) || other || people[0];');
+    template = template.replace(/(fbViewOpts: this\.segVM\(\[\{ label: 'This is me', value: 'own' \}, \{ label: 'Add friend', value: 'add' \}, \{ label: 'Friends', value: 'friend' \}\], fbView, v => this\.setUI\('fbView', v\)\),)/, `$1
+      fbProfileOpts: people.map(p => ({
+        label: p.name, onPick: () => this.setUI('fbProfileId', p.id),
+        style: {
+          padding: '7px 13px', fontSize: '12px', cursor: 'pointer', borderRadius: '999px', fontFamily: 'var(--font-heading)', fontWeight: 700,
+          border: '1px solid ' + ((ui.fbProfileId || (fbPerson && fbPerson.id)) === p.id ? 'var(--color-accent)' : 'var(--color-divider)'),
+          background: (ui.fbProfileId || (fbPerson && fbPerson.id)) === p.id ? 'var(--color-accent)' : 'var(--color-surface)',
+          color: (ui.fbProfileId || (fbPerson && fbPerson.id)) === p.id ? '#3a2530' : 'var(--color-text)'
+        }
+      })),`);
+    template = template.replace(/(<sc-if value="\{\{ isFbProfile \}\}"[^>]*>\s*)<div class="field" style="margin-top:var\(--space-2\)">\s*<label>Viewer<\/label>/, `$1<div class="field" style="margin-top:var(--space-2)">
+              <label>Whose profile</label>
+              <div style="display:flex;gap:var(--space-2);flex-wrap:wrap">
+                <sc-for list="{{ fbProfileOpts }}" as="fp" hint-placeholder-count="2"><button style="{{ fp.style }}" onClick="{{ fp.onPick }}">{{ fp.label }}</button></sc-for>
+              </div>
+            </div>
+            <div class="field" style="margin-top:var(--space-2)">
+              <label>Viewer</label>`);
     template = template.replace("worldTabs: this.flattenWorlds(s.worlds || []).map(w => {", "worldTabs: this.flattenWorlds(s.worlds || []).map(w => {");
     template = template.replace("wrapStyle: { display: 'inline-flex', alignItems: 'center', flex: 'none', borderRadius: '999px',", "wrapStyle: { display: 'flex', alignItems: 'center', width: 'calc(100% - ' + ((w.depth || 0) * 14) + 'px)', marginLeft: ((w.depth || 0) * 14) + 'px', flex: 'none', borderRadius: '12px',");
     template = template.replace("tabStyle: { border: 'none', background: 'transparent', cursor: 'pointer', padding: '6px 12px', paddingLeft: (8 + (w.depth || 0) * 10) + 'px',", "tabStyle: { flex: 1, minWidth: 0, textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer', padding: '7px 10px',");
