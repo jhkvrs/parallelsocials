@@ -693,6 +693,107 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Strip integrity + crossorigin — blob URLs from a file:// document inherit
     // a null origin, so crossorigin forces a CORS fetch that SRI then rejects.
     // The manifest bytes are ours; SRI protects against CDN compromise, not this.
+    // Final folder behavior for the self-contained build: child worlds are
+    // visibly nested, inherit the parent’s people/settings, and own separate
+    // conversation data. This runs after the older compatibility patches.
+    template = template.replace(/  addWorld\(parentId\) \{[\s\S]*?  addSubWorld\(\) \{ this\.addWorld\(this\.state\.activeWorld\); \}\n/, `  cloneScene(scene) {
+    try { return JSON.parse(JSON.stringify(scene || plScene())); } catch (e) { return plScene(); }
+  }
+  subfolderScene(parentScene) {
+    const base = plScene();
+    const parent = this.cloneScene(parentScene);
+    return { platform: parent.platform || base.platform, people: Array.isArray(parent.people) && parent.people.length ? parent.people : base.people, messages: [], ui: Object.assign({}, base.ui, parent.ui || {}), story: Object.assign({}, base.story, parent.story || {}) };
+  }
+  addWorld(parentId) {
+    const id = plUid();
+    this.setState(st => {
+      const scenes = Object.assign({}, st.worldScenes);
+      const activeScene = this.liveScene();
+      scenes[st.activeWorld] = activeScene;
+      const parent = parentId && (st.worlds || []).some(w => w.id === parentId) ? parentId : null;
+      const siblings = (st.worlds || []).filter(w => (w.parentId || null) === parent).length;
+      const worlds = this.normalizeWorlds(st.worlds).concat([{ id: id, name: (parent ? 'Subfolder ' : 'Folder ') + (siblings + 1), parentId: parent }]);
+      const parentScene = parent ? (parent === st.activeWorld ? activeScene : (scenes[parent] || plScene())) : null;
+      const childScene = parent ? this.subfolderScene(parentScene) : plScene();
+      return Object.assign({ worlds: worlds, activeWorld: id, worldScenes: scenes, openReply: null, openReact: null, storySel: null, menuOpen: false }, this.applyScene(childScene));
+    });
+  }
+  addSubWorld() { this.addWorld(this.state.activeWorld); }
+`);
+    template = template.replace("  duplicatePerson(id) {", `  startPersonDrag(id, e) {
+    if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', id); } catch (err) {} }
+    this.setState({ dragPersonId: id, dragOverPersonId: null });
+  }
+  reorderPeople(draggedId, targetId) {
+    this.setState(st => {
+      const from = st.people.findIndex(p => p.id === draggedId), to = st.people.findIndex(p => p.id === targetId);
+      if (from < 0 || to < 0 || from === to) return { dragPersonId: null, dragOverPersonId: null };
+      const people = st.people.slice(), moved = people.splice(from, 1)[0];
+      people.splice(to, 0, moved);
+      return { people: people, dragPersonId: null, dragOverPersonId: null };
+    });
+  }
+  addPersonToSubfolder(personId, worldId) {
+    this.setState(st => {
+      const person = st.people.find(p => p.id === personId);
+      if (!person || !worldId || worldId === st.activeWorld) return { subfolderPickerFor: null };
+      const scenes = Object.assign({}, st.worldScenes || {});
+      scenes[st.activeWorld] = this.liveScene();
+      const target = this.cloneScene(scenes[worldId] || plScene());
+      if (!(target.people || []).some(p => p.id === personId)) target.people = (target.people || []).concat([this.cloneScene(person)]);
+      scenes[worldId] = target;
+      return { worldScenes: scenes, subfolderPickerFor: null };
+    });
+  }
+  duplicatePerson(id) {`);
+    template = template.replace('const peopleRows = people.map(p => ({', `const subfolderIds = this.worldDescendants(s.activeWorld, s.worlds || []);
+    const subfolderTargets = this.flattenWorlds(s.worlds || []).filter(w => w.id !== s.activeWorld && subfolderIds.has(w.id));
+    const peopleRows = people.map(p => ({`);
+    template = template.replace(/(const peopleRows = people\.map\(p => \(\{\n\s*id: p\.id, name: p\.name,\n\s*av: this\.avatarVM\(p, 34, 13\),)/, `$1
+      rowStyle: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'nowrap', minWidth: 0, overflowX: 'auto', padding: '3px', border: '1px solid ' + (s.dragOverPersonId === p.id ? 'var(--color-accent)' : (s.dragPersonId === p.id ? 'color-mix(in srgb, var(--color-accent) 60%, transparent)' : 'transparent')), borderRadius: '12px', background: s.dragOverPersonId === p.id ? 'color-mix(in srgb, var(--color-accent) 13%, transparent)' : 'transparent', transform: s.dragOverPersonId === p.id ? 'translateY(-3px) scale(1.012)' : 'none', opacity: s.dragPersonId === p.id ? .56 : 1, boxShadow: s.dragOverPersonId === p.id ? '0 8px 18px rgba(244,166,196,.25)' : 'none', transition: 'transform .16s ease, border-color .16s ease, background .16s ease, opacity .16s ease, box-shadow .16s ease' },
+      dragStyle: { width: '16px', height: '26px', flex: 'none', padding: 0, cursor: 'grab', border: 'none', borderRadius: '6px', background: 'transparent url("data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 14 20%27 fill=%27%23917d89%27%3E%3Ccircle cx=%273%27 cy=%273%27 r=%271.5%27/%3E%3Ccircle cx=%2711%27 cy=%273%27 r=%271.5%27/%3E%3Ccircle cx=%273%27 cy=%2710%27 r=%271.5%27/%3E%3Ccircle cx=%2711%27 cy=%2710%27 r=%271.5%27/%3E%3Ccircle cx=%273%27 cy=%2717%27 r=%271.5%27/%3E%3Ccircle cx=%2711%27 cy=%2717%27 r=%271.5%27/%3E%3C/svg%3E") center/9px 13px no-repeat', color: 'transparent', fontSize: 0, lineHeight: 1, touchAction: 'none' },
+      onDragStart: e => this.startPersonDrag(p.id, e),
+      onDragEnd: () => this.setState({ dragPersonId: null, dragOverPersonId: null }),
+      onDragOver: e => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'; if (s.dragPersonId && s.dragPersonId !== p.id && s.dragOverPersonId !== p.id) this.setState({ dragOverPersonId: p.id }); },
+      onDrop: e => { e.preventDefault(); const dragged = (e.dataTransfer && e.dataTransfer.getData('text/plain')) || s.dragPersonId; if (dragged) this.reorderPeople(dragged, p.id); },`);
+    template = template.replace('      onDuplicate: () => this.duplicatePerson(p.id),', `      onDuplicate: () => this.duplicatePerson(p.id),
+      hasSubfolderTargets: subfolderTargets.length > 0,
+      subfolderPickerOpen: s.subfolderPickerFor === p.id,
+      onToggleSubfolderPicker: () => this.setState({ subfolderPickerFor: s.subfolderPickerFor === p.id ? null : p.id }),
+      subfolderTargets: subfolderTargets.map(w => {
+        const scene = (s.worldScenes || {})[w.id] || plScene();
+        const alreadyAdded = (scene.people || []).some(person => person.id === p.id);
+        return { id: w.id, label: (w.depth ? '↳ ' : '') + w.name, disabled: alreadyAdded, style: { border: '1px solid var(--color-divider)', borderRadius: '999px', padding: '5px 9px', fontSize: '11px', cursor: alreadyAdded ? 'default' : 'pointer', opacity: alreadyAdded ? .5 : 1, background: 'var(--color-surface)', color: 'var(--color-text)' }, onAdd: () => this.addPersonToSubfolder(p.id, w.id) };
+      }),`);
+    template = template.replace('<sc-for list="{{ peopleRows }}" as="p" hint-placeholder-count="2">\n            <div style="display:flex;align-items:center;gap:var(--space-2)">\n              <button style="{{ p.av.style }}"', '<sc-for list="{{ peopleRows }}" as="p" hint-placeholder-count="2">\n            <div style="{{ p.rowStyle }}" onDragOver="{{ p.onDragOver }}" onDrop="{{ p.onDrop }}">\n              <button style="{{ p.dragStyle }}" draggable="true" onDragStart="{{ p.onDragStart }}" onDragEnd="{{ p.onDragEnd }}" title="Drag to rearrange this person">â‹®â‹®</button>\n              <button style="{{ p.av.style }}"');
+    template = template.replace('<sc-for list="{{ peopleRows }}" as="p" hint-placeholder-count="2">\n            <div style="display:flex;align-items:center;gap:var(--space-2)">\n              <button style="{{ p.av.style }}"', '<sc-for list="{{ peopleRows }}" as="p" hint-placeholder-count="2">\n            <div style="{{ p.rowStyle }}" sc-camel-on-drag-over="{{ p.onDragOver }}" sc-camel-on-drop="{{ p.onDrop }}">\n              <button style="{{ p.dragStyle }}" draggable="true" sc-camel-on-drag-start="{{ p.onDragStart }}" sc-camel-on-drag-end="{{ p.onDragEnd }}" title="Drag to rearrange this person">â‹®â‹®</button>\n              <button style="{{ p.av.style }}"');
+    template = template.replace(/(<button[^>]*(?:onClick|sc-camel-on-click)="\{\{ p\.onDuplicate \}\}"[^>]*>Dup<\/button>)/, `$1
+              <sc-if value="{{ p.hasSubfolderTargets }}" hint-placeholder-val="{{ false }}">
+                <button class="btn btn-secondary" style="font-size:11px;padding:7px 9px;border-radius:999px" onClick="{{ p.onToggleSubfolderPicker }}" title="Add this person to a subfolder">+ Sub</button>
+              </sc-if>
+              <sc-if value="{{ p.subfolderPickerOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;flex-basis:100%;width:100%;flex-wrap:wrap;gap:6px;padding:5px 0 4px 42px">
+                  <span style="font-size:11px;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Add to subfolder:</span>
+                  <sc-for list="{{ p.subfolderTargets }}" as="target" hint-placeholder-count="1">
+                    <button style="{{ target.style }}" onClick="{{ target.onAdd }}" disabled="{{ target.disabled }}">{{ target.label }}</button>
+                  </sc-for>
+                </div>
+              </sc-if>`);
+    template = template.replace(/(<sc-if value="\{\{ showProfileRow \}\}"[\s\S]*?<\/sc-if>)(\n\s*<\/div>\n\s*<\/sc-for>)/, `$1
+            <sc-if value="{{ p.subfolderPickerOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:5px 0 4px 42px">
+                <span style="font-size:11px;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Add to subfolder:</span>
+                <sc-for list="{{ p.subfolderTargets }}" as="target" hint-placeholder-count="1">
+                  <button style="{{ target.style }}" onClick="{{ target.onAdd }}" disabled="{{ target.disabled }}">{{ target.label }}</button>
+                </sc-for>
+              </div>
+            </sc-if>$2`);
+    template = template.replace('<input class="input" value="{{ p.name }}" onChange="{{ p.onName }}" style="flex:1;min-width:0">', '<input class="input" value="{{ p.name }}" onChange="{{ p.onName }}" style="flex:1 1 110px;min-width:110px">');
+    template = template.replace("worldTabs: this.flattenWorlds(s.worlds || []).map(w => {", "worldTabs: this.flattenWorlds(s.worlds || []).map(w => {");
+    template = template.replace("wrapStyle: { display: 'inline-flex', alignItems: 'center', flex: 'none', borderRadius: '999px',", "wrapStyle: { display: 'flex', alignItems: 'center', width: 'calc(100% - ' + ((w.depth || 0) * 14) + 'px)', marginLeft: ((w.depth || 0) * 14) + 'px', flex: 'none', borderRadius: '12px',");
+    template = template.replace("tabStyle: { border: 'none', background: 'transparent', cursor: 'pointer', padding: '6px 12px', paddingLeft: (8 + (w.depth || 0) * 10) + 'px',", "tabStyle: { flex: 1, minWidth: 0, textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer', padding: '7px 10px',");
+    template = template.replace('<div style="display:flex;gap:6px;align-items:center;overflow-x:auto;padding-bottom:3px">', '<div style="display:flex;flex-direction:column;gap:5px;align-items:stretch;max-height:190px;overflow-y:auto;padding:1px 2px 3px">');
+
     // Replace the historical TikTok exporter wholesale: its layered patches
     // rasterized standalone notification transparency as a black frame.
     template = template.replace(/async renderTiktokCanvas\(\) \{[\s\S]*?  \}\n  \/\/ Non-TikTok export/, `async renderTiktokCanvas() {
