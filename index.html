@@ -928,7 +928,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     template = template.replace('<div style="{{ lockNotifCardStyle }}">', '<div class="pl-lock-notif-card" style="{{ lockNotifCardStyle }}">');
     template = template.replace('  [data-pl-theme] .pl-hide { display: none !important; }\n</style>', `  [data-pl-theme] .pl-hide { display: none !important; }
   .pl-lock-notif-card { position: relative; overflow: hidden; isolation: isolate; }
-  .pl-lock-notif-card::before { content: ""; position: absolute; inset: -14px; z-index: 0; pointer-events: none; background-image: var(--pl-lock-mirror, none); background-position: var(--pl-lock-mirror-pos, center); background-size: var(--pl-lock-mirror-size, cover); background-repeat: no-repeat; filter: blur(12px); -webkit-filter: blur(12px); }
+  /* A pre-blurred, card-sized image is supplied by syncLockNotificationBlur.
+     Avoid CSS filter here: Safari can paint a filtered pseudo-element outside
+     the card's rounded overflow clip during an export. */
+  .pl-lock-notif-card::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background-image: var(--pl-lock-mirror, none); background-position: 0 0; background-size: 100% 100%; background-repeat: no-repeat; }
   .pl-lock-notif-card > * { position: relative; z-index: 1; }
   .pl-overlay-notif-card { position: relative; overflow: hidden; isolation: isolate; }
   .pl-overlay-notif-card::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background-image: var(--pl-overlay-mirror, none); background-position: 0 0; background-size: 100% 100%; background-repeat: no-repeat; }
@@ -1027,7 +1030,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const cards = stage.querySelectorAll('.pl-lock-notif-card');
     if (!cards.length) return;
     if (this.state.platform !== 'lockscreen' || !ui.lockWallpaper) {
-      cards.forEach(card => { card.style.removeProperty('--pl-lock-mirror-size'); card.style.removeProperty('--pl-lock-mirror-pos'); });
+      cards.forEach(card => card.style.removeProperty('--pl-lock-mirror'));
       return;
     }
     const source = ui.lockWallpaper;
@@ -1045,12 +1048,37 @@ document.addEventListener('DOMContentLoaded', async function() {
     const cover = Math.max(stageW / image.naturalWidth, stageH / image.naturalHeight);
     const imageW = image.naturalWidth * cover, imageH = image.naturalHeight * cover;
     const imageX = (stageW - imageW) / 2, imageY = (stageH - imageH) / 2;
-    cards.forEach(card => {
-      const rect = card.getBoundingClientRect();
-      const cardX = (rect.left - stageRect.left) * scaleX - 14, cardY = (rect.top - stageRect.top) * scaleY - 14;
-      card.style.setProperty('--pl-lock-mirror-size', Math.ceil(imageW) + 'px ' + Math.ceil(imageH) + 'px');
-      card.style.setProperty('--pl-lock-mirror-pos', Math.round(imageX - cardX) + 'px ' + Math.round(imageY - cardY) + 'px');
+    const geometry = Array.from(cards).map(card => {
+      const rect = card.getBoundingClientRect(), pseudo = getComputedStyle(card, '::before');
+      return { card: card, x: (rect.left - stageRect.left) * scaleX + card.clientLeft, y: (rect.top - stageRect.top) * scaleY + card.clientTop, w: Number.parseFloat(pseudo.width), h: Number.parseFloat(pseudo.height) };
     });
+    const geometrySignature = geometry.map(g => [g.x, g.y, g.w, g.h].map(n => Math.round(n * 10) / 10).join(',')).join('|');
+    const signature = source + '|' + stageW + 'x' + stageH + '|' + geometrySignature;
+    if (signature === this._lockBlurSignature) return;
+    const canvasSignature = source + '|' + stageW + 'x' + stageH;
+    let blurred = this._lockBlurCanvas;
+    if (!blurred || this._lockBlurCanvasSignature !== canvasSignature) {
+      const wallpaper = document.createElement('canvas');
+      wallpaper.width = Math.max(1, Math.round(stageW)); wallpaper.height = Math.max(1, Math.round(stageH));
+      wallpaper.getContext('2d').drawImage(image, imageX, imageY, imageW, imageH);
+      const reduced = document.createElement('canvas');
+      reduced.width = Math.max(1, Math.round(wallpaper.width / 18)); reduced.height = Math.max(1, Math.round(wallpaper.height / 18));
+      const reducedCtx = reduced.getContext('2d');
+      reducedCtx.imageSmoothingEnabled = true; reducedCtx.drawImage(wallpaper, 0, 0, reduced.width, reduced.height);
+      blurred = document.createElement('canvas');
+      blurred.width = wallpaper.width; blurred.height = wallpaper.height;
+      const blurredCtx = blurred.getContext('2d');
+      blurredCtx.imageSmoothingEnabled = true; blurredCtx.imageSmoothingQuality = 'high';
+      blurredCtx.drawImage(reduced, 0, 0, reduced.width, reduced.height, 0, 0, blurred.width, blurred.height);
+      this._lockBlurCanvas = blurred; this._lockBlurCanvasSignature = canvasSignature;
+    }
+    geometry.forEach(item => {
+      const crop = document.createElement('canvas');
+      crop.width = Math.max(1, Math.round(item.w)); crop.height = Math.max(1, Math.round(item.h));
+      crop.getContext('2d').drawImage(blurred, item.x, item.y, item.w, item.h, 0, 0, crop.width, crop.height);
+      item.card.style.setProperty('--pl-lock-mirror', 'url("' + crop.toDataURL('image/png') + '")');
+    });
+    this._lockBlurSignature = signature;
   }
 
   normalizeWorlds(list) {`);
