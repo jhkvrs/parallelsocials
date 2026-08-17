@@ -296,6 +296,46 @@ document.addEventListener('DOMContentLoaded', async function() {
     const splashMarkup = '<div id="pl-splash" role="status" aria-label="Loading Parallel"><div class="pl-splash-inner"><span class="pl-splash-flower" aria-hidden="true">🌸</span><span class="pl-splash-word">Parallel</span></div></div><scr' + 'ipt>(function(){var splash=document.getElementById("pl-splash");if(!splash)return;setTimeout(function(){splash.classList.add("pl-splash-fade")},2100);setTimeout(function(){if(splash.parentNode)splash.parentNode.removeChild(splash)},2500)})()</scr' + 'ipt>';
     template = template.replace(/<head[^>]*>/i, match => match + splashStyle);
     template = template.replace(/<body[^>]*>/i, match => match + splashMarkup);
+    // For TikTok exports with an in-app notification overlay, render the phone
+    // as three canvas layers: phone base, blurred card-sized background areas,
+    // then the translucent notification cards. This avoids asking html-to-image
+    // to reproduce backdrop-filter inside its SVG clone.
+    template = template.replace('  async renderTiktokCanvas() {', `  async renderOverlayPhoneForCanvas(phone, res) {
+    const ui = this.state.ui || {};
+    const wrap = phone && phone.querySelector('.pl-overlay-notif-wrap');
+    const cards = wrap && Array.from(wrap.querySelectorAll('.pl-overlay-notif-card'));
+    const active = this.state.platform !== 'lockscreen' && this.state.platform !== 'notifications' && !!ui.showOverlay && cards && cards.length;
+    if (!active || !window.htmlToImage) return '';
+    const phoneRect = phone.getBoundingClientRect(), wrapRect = wrap.getBoundingClientRect();
+    if (!phoneRect.width || !phoneRect.height || !wrapRect.width || !wrapRect.height) return '';
+    const phoneW = phone.offsetWidth, phoneH = phone.offsetHeight, sx = phoneW / phoneRect.width, sy = phoneH / phoneRect.height;
+    const cardsMeta = cards.map(card => { const rect = card.getBoundingClientRect(); return { x: (rect.left - phoneRect.left) * sx, y: (rect.top - phoneRect.top) * sy, w: rect.width * sx, h: rect.height * sy, radius: parseFloat(getComputedStyle(card).borderTopLeftRadius) || 0 }; });
+    const captureOpts = { pixelRatio: res, cacheBust: true, skipFonts: false, fontEmbedCSS: this._fontCSS || undefined, backgroundColor: undefined, style: { margin: '0', maxWidth: 'none', boxSizing: 'border-box', textSizeAdjust: '100%', WebkitTextSizeAdjust: '100%', transform: 'none', animation: 'none' } };
+    const oldVisibility = wrap.style.visibility;
+    let baseUrl = '';
+    try { wrap.style.visibility = 'hidden'; baseUrl = await window.htmlToImage.toPng(phone, Object.assign({}, captureOpts, { width: phoneW, height: phoneH, style: Object.assign({}, captureOpts.style, { width: phoneW + 'px', height: phoneH + 'px' }) })); } finally { wrap.style.visibility = oldVisibility; }
+    if (!baseUrl) return '';
+    const mirrors = cards.map(card => card.style.getPropertyValue('--pl-overlay-mirror'));
+    let overlayUrl = '';
+    try { cards.forEach(card => card.style.removeProperty('--pl-overlay-mirror')); overlayUrl = await window.htmlToImage.toPng(wrap, Object.assign({}, captureOpts, { width: wrap.offsetWidth, height: wrap.offsetHeight, style: Object.assign({}, captureOpts.style, { width: wrap.offsetWidth + 'px', height: wrap.offsetHeight + 'px', position: 'relative', top: '0', left: '0', right: 'auto', bottom: 'auto' }) })); } finally { cards.forEach((card, i) => { if (mirrors[i]) card.style.setProperty('--pl-overlay-mirror', mirrors[i]); else card.style.removeProperty('--pl-overlay-mirror'); }); }
+    if (!overlayUrl) return baseUrl;
+    const base = new Image(); base.src = baseUrl; await base.decode();
+    const overlay = new Image(); overlay.src = overlayUrl; await overlay.decode();
+    const canvas = document.createElement('canvas'); canvas.width = base.width; canvas.height = base.height;
+    const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(base, 0, 0);
+    const roundRect = (x, y, w, h, r) => { r = Math.min(r, w / 2, h / 2); ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
+    cardsMeta.forEach(card => { const x = card.x * res, y = card.y * res, w = card.w * res, h = card.h * res; ctx.save(); roundRect(x, y, w, h, card.radius * res); ctx.clip(); ctx.filter = 'blur(15px)'; ctx.drawImage(base, 0, 0); ctx.restore(); });
+    const ox = (wrapRect.left - phoneRect.left) * sx * res, oy = (wrapRect.top - phoneRect.top) * sy * res;
+    ctx.drawImage(overlay, ox, oy, wrapRect.width * sx * res, wrapRect.height * sy * res);
+    return canvas.toDataURL('image/png');
+  }
+  async renderTiktokCanvas() {`);
+    template = template.replace('    const phoneUrl = await window.htmlToImage.toPng(phone, {', '    const overlayCompositeUrl = await this.renderOverlayPhoneForCanvas(phone, res);\n    const phoneUrl = overlayCompositeUrl || await window.htmlToImage.toPng(phone, {');
+    // Standard PNG exports use the same overlay-card composite, but still keep
+    // the mockup's natural dimensions. A stale string "false" must not enable
+    // the TikTok canvas branch.
+    template = template.replace('      url = await window.htmlToImage.toPng(node, Object.assign({}, base, {', '      url = await this.renderOverlayPhoneForCanvas(node, res) || await window.htmlToImage.toPng(node, Object.assign({}, base, {');
+    template = template.replace('    const tiktok = this.state.ui && this.state.ui.tiktok;', '    const tiktok = !!(this.state.ui && this.state.ui.tiktok === true);');
 
     // Strip integrity + crossorigin — blob URLs from a file:// document inherit
     // a null origin, so crossorigin forces a CORS fetch that SRI then rejects.
