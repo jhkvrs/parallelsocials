@@ -87,6 +87,7 @@
     SUPABASE_URL: "https://sdiajxokrbnycmwgnoie.supabase.co",
     SUPABASE_ANON_KEY: "sb_publishable_MpJinGuPyRmiLOQ20s8cSQ_BU4f4C0O",
     MEDIA_API_URL: "https://media-api.parallelsocials.cc",
+    MEDIA_PUBLIC_URL: "https://media.parallelsocials.cc",
     /* Switch to true once the two values above are filled in and the Supabase
        setup in SETUP.md is done. While it is false the Account panel shows
        "Coming Soon" and everything saves in the browser only.              */
@@ -2793,6 +2794,20 @@
               <sc-if value="{{ cloudMsg }}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;line-height:1.45;color:var(--color-accent-700)">{{ cloudMsg }}</div></sc-if>
             </div>
 
+            <div style="border:1px solid var(--color-divider);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:7px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:13px;font-weight:700">Cloud media</span>
+                <span style="margin-left:auto;font-size:11px;padding:3px 8px;border-radius:999px;background:var(--color-accent-100);color:var(--color-accent-700)">{{ mediaPlanLabel }}</span>
+              </div>
+              <div style="height:7px;border-radius:999px;background:color-mix(in srgb, var(--color-text) 10%, transparent);overflow:hidden">
+                <div style="{{ mediaUsageBarStyle }}"></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:12px;line-height:1.45;color:color-mix(in srgb, var(--color-text) 58%, transparent)">{{ mediaUsageLabel }}</span>
+                <button class="btn btn-secondary" style="margin-left:auto;border-radius:999px;padding:4px 9px;font-size:11px" onClick="{{ refreshMediaUsage }}" disabled="{{ mediaUsageLoading }}">Refresh</button>
+              </div>
+            </div>
+
             <div>
               <h6 style="margin:0 0 8px">Saved profiles <span style="text-transform:none;letter-spacing:0;font-weight:400;color:color-mix(in srgb, var(--color-text) 55%, transparent)">{{ profileCount }}</span></h6>
               <sc-if value="{{ noProfiles }}" hint-placeholder-val="{{ true }}">
@@ -3137,7 +3152,7 @@ class Component extends DCLogic {
     this.state = Object.assign(seed, { worlds: [{ id: 'w1', name: 'Folder 1', parentId: null }], activeWorld: 'w1', worldScenes: {},
       scale: 3, helpOpen: false, busy: '', copied: false, exportError: '', theme: 'light', emojiStyle: 'native',
       accountOpen: false, authEmail: '', authPassword: '', authMsg: '', authBusy: false,
-      user: null, savedProfiles: [], cloudState: '', cloudMsg: '', openReact: null, openReactRect: null, reactionAddOpen: null, newReaction: '', openReply: null, openReplyRect: null, openPicker: null, openPickerRect: null, storySel: null, menuOpen: false,
+      user: null, savedProfiles: [], cloudState: '', cloudMsg: '', mediaUsage: null, mediaUsageState: '', openReact: null, openReactRect: null, reactionAddOpen: null, newReaction: '', openReply: null, openReplyRect: null, openPicker: null, openPickerRect: null, storySel: null, menuOpen: false,
       parallelEmojis: [], parallelEmojiQuery: '', parallelEmojiCategory: 'All',
       narrow: (typeof window !== 'undefined' && window.innerWidth < 880),
       scrolledPast: false, miniScale: 1,
@@ -5555,12 +5570,12 @@ class Component extends DCLogic {
       this.setState({ user: u, authMsg: '' }, async () => {
         if (!u) {
           this._cloudReady = true;
-          this.setState({ savedProfiles: [], cloudState: '', cloudMsg: '' });
+          this.setState({ savedProfiles: [], cloudState: '', cloudMsg: '', mediaUsage: null, mediaUsageState: '' });
           return;
         }
         // Pull before enabling pushes. Previously a slow first read could let
         // the starter browser scene overwrite the user's cloud scenes.
-        await Promise.all([this.loadProfiles(), this.cloudPull()]);
+        await Promise.all([this.loadProfiles(), this.cloudPull(), this.loadMediaUsage()]);
         this._cloudReady = true;
         this.queueSceneSave();
       });
@@ -5578,40 +5593,113 @@ class Component extends DCLogic {
      Signed in, the whole set of folders is kept in one Supabase `scenes` row and
      uploaded photos live in Cloudflare R2, so the save is no longer bounded by the
      browser's storage quota (the thing that made iOS lose work). */
+  mediaApiUrl() {
+    const config = (typeof window !== 'undefined' && window.PARALLEL_CONFIG) || {};
+    return String(config.MEDIA_API_URL || '').replace(/\/+$/, '');
+  }
+  mediaPublicUrl() {
+    const config = (typeof window !== 'undefined' && window.PARALLEL_CONFIG) || {};
+    return String(config.MEDIA_PUBLIC_URL || 'https://media.parallelsocials.cc').replace(/\/+$/, '');
+  }
+  async mediaRequest(path, options) {
+    const sb = this.sb();
+    if (!sb || !this.state.user) throw new Error('Please sign in again.');
+    const { data, error: sessionError } = await sb.auth.getSession();
+    const session = data && data.session;
+    const accessToken = session && session.access_token;
+    if (sessionError || !accessToken) throw new Error('Please sign in again.');
+    const apiUrl = this.mediaApiUrl();
+    if (!apiUrl) throw new Error('Photo storage is not configured.');
+    const opts = Object.assign({}, options || {});
+    const headers = new Headers(opts.headers || {});
+    headers.set('Authorization', 'Bearer ' + accessToken);
+    opts.headers = headers;
+    const response = await fetch(apiUrl + path, opts);
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(result.error || ('Media service returned ' + response.status));
+      error.code = result.code || '';
+      error.status = response.status;
+      error.details = result;
+      throw error;
+    }
+    return result;
+  }
+  async prepareMediaBlob(dataUrl) {
+    const source = await (await fetch(dataUrl)).blob();
+    if (!source || !source.size || source.type === 'image/gif') return source;
+    try {
+      let image = null;
+      if (typeof createImageBitmap === 'function') image = await createImageBitmap(source);
+      else image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+      const width = image.width || image.naturalWidth;
+      const height = image.height || image.naturalHeight;
+      if (!width || !height) return source;
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(image, 0, 0, width, height);
+      if (image && typeof image.close === 'function') image.close();
+      const webp = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.86));
+      return webp && webp.type === 'image/webp' && webp.size < source.size ? webp : source;
+    } catch (e) {
+      return source;
+    }
+  }
+  async loadMediaUsage() {
+    if (!this.state.user || !this.sb()) return;
+    this.setState({ mediaUsageState: 'loading' });
+    try {
+      const usage = await this.mediaRequest('/v1/media/usage');
+      this.setState({ mediaUsage: usage, mediaUsageState: 'ready' });
+    } catch (e) {
+      this.setState({ mediaUsageState: 'error' });
+    }
+  }
+  mediaUrlsIn(value) {
+    const found = new Set();
+    const prefix = this.mediaPublicUrl() + '/profiles/';
+    const collect = v => {
+      if (typeof v === 'string') { if (v.indexOf(prefix) === 0) found.add(v); return; }
+      if (Array.isArray(v)) { v.forEach(collect); return; }
+      if (v && typeof v === 'object') Object.keys(v).forEach(k => collect(v[k]));
+    };
+    collect(value);
+    return Array.from(found);
+  }
+  async syncMediaReferences(payload) {
+    const urls = this.mediaUrlsIn(payload);
+    for (let i = 0; i < urls.length; i += 500) {
+      await this.mediaRequest('/v1/media/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls: urls.slice(i, i + 500) })
+      });
+    }
+  }
   async uploadPhoto(dataUrl) {
     const sb = this.sb(), u = this.state.user;
     if (!sb || !u || typeof dataUrl !== 'string' || dataUrl.indexOf('data:image') !== 0) return null;
     try {
-      const { data, error: sessionError } = await sb.auth.getSession();
-      const session = data && data.session;
-      const accessToken = session && session.access_token;
-      if (sessionError || !accessToken) {
-        this.setState({ cloudMsg: 'Please sign in again before uploading.' });
-        return null;
-      }
-      const blob = await (await fetch(dataUrl)).blob();
-      const config = window.PARALLEL_CONFIG || {};
-      const apiUrl = (config.MEDIA_API_URL || '').replace(/\/+$/, '');
-      if (!apiUrl) {
-        this.setState({ cloudMsg: 'Photo storage is not configured.' });
-        return null;
-      }
-      const response = await fetch(apiUrl + '/upload', {
+      const blob = await this.prepareMediaBlob(dataUrl);
+      const result = await this.mediaRequest('/v1/media', {
         method: 'POST',
         headers: {
-          Authorization: 'Bearer ' + accessToken,
           'Content-Type': blob.type || 'image/jpeg'
         },
         body: blob
       });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        this.setState({ cloudMsg: 'Photo upload failed: ' + (result.error || 'Unknown storage error') });
-        return null;
-      }
+      this.loadMediaUsage();
       return result.url || null;
     } catch (e) {
-      this.setState({ cloudMsg: 'Photo upload failed. Please try again.' });
+      const quota = e && e.code === 'QUOTA_EXCEEDED';
+      this.setState({ cloudMsg: quota
+        ? 'Your cloud media allowance is full. Remove unused images or change plans before uploading another photo.'
+        : ('Photo upload failed: ' + ((e && e.message) || 'Please try again.')) });
       return null;
     }
   }
@@ -5652,6 +5740,10 @@ class Component extends DCLogic {
     const { error } = await sb.from('scenes')
       .upsert({ user_id: u.id, payload: body, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
     this.setState({ cloudState: error ? 'error' : 'saved', cloudMsg: error ? ('Cloud save failed: ' + error.message) : '' });
+    if (!error) {
+      try { await this.syncMediaReferences(body); }
+      catch (e) { /* Reference timestamps are retried on the next successful cloud save. */ }
+    }
   }
   async cloudPull() {
     const sb = this.sb(), u = this.state.user;
@@ -5733,7 +5825,7 @@ class Component extends DCLogic {
     const sb = this.sb();
     if (!sb) return;
     await sb.auth.signOut();
-    this.setState({ user: null, savedProfiles: [], authMsg: '' });
+    this.setState({ user: null, savedProfiles: [], authMsg: '', mediaUsage: null, mediaUsageState: '' });
   }
   async saveProfile(p) {
     const sb = this.sb();
@@ -5771,21 +5863,42 @@ class Component extends DCLogic {
       };
     });
   }
+  async deleteAccountMedia() {
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      const result = await this.mediaRequest('/v1/account-media', { method: 'DELETE' });
+      if (result && result.complete) return;
+    }
+    throw new Error('Media cleanup needs another attempt. Please try deleting the account again.');
+  }
   async doDeleteAccount() {
     const sb = this.sb();
     if (!sb) return;
-    if (!window.confirm('Delete your account, your sign-in and every profile saved to it? This cannot be undone.')) return;
+    if (!window.confirm('Delete your account, all Cloudflare media, saved profiles and your sign-in? This cannot be undone.')) return;
     this.setState({ authBusy: true, authMsg: '' });
+    try {
+      await this.deleteAccountMedia();
+    } catch (e) {
+      this.setState({ authBusy: false, authMsg: 'Could not remove your cloud media: ' + ((e && e.message) || 'Please try again.') });
+      return;
+    }
     const { error } = await sb.rpc('delete_own_account');
     if (error) { this.setState({ authBusy: false, authMsg: 'Could not delete: ' + error.message }); return; }
     await sb.auth.signOut();
-    this.setState({ authBusy: false, user: null, savedProfiles: [], authMsg: 'Your account has been deleted.' });
+    this.setState({ authBusy: false, user: null, savedProfiles: [], mediaUsage: null, mediaUsageState: '', authMsg: 'Your account has been deleted.' });
   }
 
   resetAll() {
     if (!window.confirm('Reset the current folder back to the starting conversation?')) return;
     this.setState(Object.assign(plScene(), { scale: this.state.scale, helpOpen: false, busy: '', exportError: '',
       worlds: this.state.worlds, activeWorld: this.state.activeWorld, worldScenes: this.state.worldScenes }));
+  }
+
+  formatMediaBytes(value) {
+    const bytes = Math.max(0, Number(value) || 0);
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(bytes < 10240 ? 1 : 0) + ' KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0) + ' MB';
+    return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
   }
 
   /* ── view helpers ── */
@@ -7423,6 +7536,13 @@ class Component extends DCLogic {
     const blockedProfilePerson = twIsProfile ? twPerson : (isFbProfile ? fbPerson : (isIgProfile ? igPerson : null));
     const blockedProfileBg = twIsProfile ? tw.bg : (isFbProfile ? fb.bg : ig.bg);
     const blockedProfileFg = twIsProfile ? tw.text : (isFbProfile ? fb.text : ig.txt);
+    const mediaUsage = s.mediaUsage;
+    const mediaUsagePct = mediaUsage ? Math.max(0, Math.min(100, Number(mediaUsage.usagePercent) || 0)) : 0;
+    const mediaUsageLabel = s.mediaUsageState === 'loading' ? 'Checking your allowance…'
+      : s.mediaUsageState === 'error' ? 'Allowance is temporarily unavailable.'
+      : mediaUsage
+        ? (this.formatMediaBytes(mediaUsage.usedBytes) + ' of ' + this.formatMediaBytes(mediaUsage.limitBytes) + ' used · ' + (Number(mediaUsage.assetCount) || 0) + ((Number(mediaUsage.assetCount) || 0) === 1 ? ' image' : ' images'))
+        : 'No cloud media usage yet.';
 
     const vm = {
       /* cropper */
@@ -8425,6 +8545,15 @@ class Component extends DCLogic {
       doGoogle: () => this.doGoogle(),
       doSignOut: () => this.doSignOut(),
       doDeleteAccount: () => this.doDeleteAccount(),
+      refreshMediaUsage: () => this.loadMediaUsage(),
+      mediaUsageLoading: s.mediaUsageState === 'loading',
+      mediaUsageLabel: mediaUsageLabel,
+      mediaPlanLabel: mediaUsage && mediaUsage.plan === 'cloud' ? 'Cloud plan' : 'Free plan',
+      mediaUsageBarStyle: {
+        width: mediaUsagePct + '%', height: '100%', borderRadius: '999px',
+        background: mediaUsagePct >= 90 ? '#dc5965' : mediaUsagePct >= 70 ? '#d39a45' : 'var(--color-accent)',
+        transition: 'width .25s ease'
+      },
       noProfiles: s.savedProfiles.length === 0,
       profileCount: s.savedProfiles.length + ' of 25',
       savedRows: s.savedProfiles.map(r => ({
