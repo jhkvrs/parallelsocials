@@ -53,7 +53,7 @@
 <body>
 <script>
   // Temporary migration switch. Change this single value to false to reopen the app.
-  window.PARALLEL_MAINTENANCE = true;
+  window.PARALLEL_MAINTENANCE = false;
 </script>
 <style>
   #pl-maintenance { position:fixed; inset:0; z-index:2147483646; box-sizing:border-box; display:flex; align-items:center; justify-content:center; overflow:auto; padding:32px 20px; background:radial-gradient(circle at 18% 14%,rgba(244,166,196,.22),transparent 33%),radial-gradient(circle at 84% 82%,rgba(238,143,179,.16),transparent 30%),#fdf6f9; color:#40303a; font-family:"Nunito",ui-rounded,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
@@ -115,23 +115,13 @@
 <script src="_ds/modernist-67da43b1-1a8d-4bd2-85dc-ef1ac575b783/_ds_bundle.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
-  /* ── ACCOUNTS CONFIG ──────────────────────────────────────────────────
-     Paste the two values from your Supabase project here (Settings → API).
-     Leave them as they are and the site works exactly as before, with
-     accounts switched off. See SETUP.md for the full walkthrough.        */
+  /* ── ACCOUNTS CONFIG ────────────────────────────────────────────────── */
   window.PARALLEL_CONFIG = {
     MAINTENANCE_MODE: window.PARALLEL_MAINTENANCE === true,
-    SUPABASE_URL: "https://sdiajxokrbnycmwgnoie.supabase.co",
-    SUPABASE_ANON_KEY: "sb_publishable_MpJinGuPyRmiLOQ20s8cSQ_BU4f4C0O",
-    MEDIA_API_URL: "https://media-api.parallelsocials.cc",
+    API_URL: "https://api.parallelsocials.cc",
     MEDIA_PUBLIC_URL: "https://media.parallelsocials.cc",
-    /* Switch to true once the two values above are filled in and the Supabase
-       setup in SETUP.md is done. While it is false the Account panel shows
-       "Coming Soon" and everything saves in the browser only.              */
     ACCOUNTS_ENABLED: true,
-    /* Google OAuth is configured in Supabase and Google Cloud. */
     GOOGLE_ENABLED: true
   };
 </script>
@@ -2810,11 +2800,10 @@
             </div>
             <div class="pl-auth-actions" style="display:flex;gap:var(--space-2);flex-wrap:wrap">
               <button class="btn btn-primary" style="border-radius:999px;padding:10px 20px" onClick="{{ doSignIn }}" disabled="{{ authBusy }}">Sign in</button>
-              <button class="btn btn-secondary" style="border-radius:999px;padding:10px 20px" onClick="{{ doSignUp }}" disabled="{{ authBusy }}">Create account</button>
               <sc-if value="{{ googleEnabled }}" hint-placeholder-val="{{ false }}"><button class="btn btn-secondary pl-google-auth" style="border-radius:999px;padding:10px 20px;margin-left:auto" onClick="{{ doGoogle }}" disabled="{{ authBusy }}">Continue with Google</button></sc-if>
             </div>
             <sc-if value="{{ authBusy }}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Connecting securely…</div></sc-if>
-            <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">New accounts get a confirmation email. Click the link in it before signing in.</div>
+            <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Existing email accounts can sign in. New users can continue with Google while email registration is temporarily unavailable.</div>
           </div>
         </sc-if>
 
@@ -3537,7 +3526,7 @@ class Component extends DCLogic {
     const write = obj => {
       try { localStorage.setItem(PL_KEY, JSON.stringify(obj)); return true; } catch (e) { return false; }
     };
-    if (this._cloudReady && this.state.user && this.sb()) {
+    if (this._cloudReady && this.state.user && this.apiLive()) {
       clearTimeout(this._cloudSave);
       this._cloudSave = setTimeout(() => this.cloudPush(payload), 1200);
     }
@@ -4446,7 +4435,7 @@ class Component extends DCLogic {
     const raw = cb;
     cb = (url, ar) => {
       raw(url, ar);
-      if (this.state.user && this.sb()) {
+      if (this.state.user && this.apiLive()) {
         this.uploadPhoto(url).then(pub => { if (pub) raw(pub, ar); });
       }
     };
@@ -5573,101 +5562,68 @@ class Component extends DCLogic {
   }
   accountsLive() {
     const c = (typeof window !== 'undefined' && window.PARALLEL_CONFIG) || {};
-    return c.ACCOUNTS_ENABLED === true && !!this.sb();
+    return c.ACCOUNTS_ENABLED === true && this.apiLive();
   }
   googleAuthLive() {
     const c = (typeof window !== 'undefined' && window.PARALLEL_CONFIG) || {};
     return this.accountsLive() && c.GOOGLE_ENABLED === true;
   }
-  sb() {
-    if (this._sb) return this._sb;
-    const c = window.PARALLEL_CONFIG || {};
-    if (c.MAINTENANCE_MODE === true) return null;
-    const ok = typeof c.SUPABASE_URL === 'string' && c.SUPABASE_URL.indexOf('http') === 0 &&
-               typeof c.SUPABASE_ANON_KEY === 'string' && c.SUPABASE_ANON_KEY.length > 30;
-    // This external script is injected by the declarative runtime. On a fast page render
-    // it can finish after the app's first render, so never cache a missing client forever.
-    if (!ok || !window.supabase || !window.supabase.createClient) return null;
-    this._sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON_KEY);
-    return this._sb;
+  apiUrl() {
+    const c = (typeof window !== 'undefined' && window.PARALLEL_CONFIG) || {};
+    return String(c.API_URL || '').replace(/\/+$/, '');
   }
-  initAuth() {
-    const sb = this.sb();
-    if (!sb) {
-      const c = window.PARALLEL_CONFIG || {};
-      // Retry briefly while the external Supabase script finishes loading, then repaint
-      // so Accounts moves from Coming Soon to the sign-in form without a page reload.
-      if (c.ACCOUNTS_ENABLED === true && (this._authRetryCount || 0) < 100 && !this._authRetryTimer) {
-        this._authRetryCount = (this._authRetryCount || 0) + 1;
-        this._authRetryTimer = setTimeout(() => {
-          this._authRetryTimer = null;
-          this.initAuth();
-          this.forceUpdate();
-        }, 75);
-      }
-      return;
-    }
-    if (this._authInitialized) return;
-    this._authInitialized = true;
-    const setUser = u => {
-      this._cloudReady = false;
-      this.setState({ user: u, authMsg: '' }, async () => {
-        if (!u) {
-          this._cloudReady = true;
-          this.setState({ savedProfiles: [], cloudState: '', cloudMsg: '', mediaUsage: null, mediaUsageState: '' });
-          return;
-        }
-        // Pull before enabling pushes. Previously a slow first read could let
-        // the starter browser scene overwrite the user's cloud scenes.
-        await Promise.all([this.loadProfiles(), this.cloudPull(), this.loadMediaUsage()]);
-        this._cloudReady = true;
-        this.queueSceneSave();
-      });
-    };
-    sb.auth.getSession().then(({ data }) => {
-      const u = data && data.session ? data.session.user : null;
-      setUser(u);
-    });
-    sb.auth.onAuthStateChange((_e, session) => {
-      const u = session ? session.user : null;
-      setUser(u);
-    });
+  apiLive() {
+    const c = (typeof window !== 'undefined' && window.PARALLEL_CONFIG) || {};
+    return c.MAINTENANCE_MODE !== true && this.apiUrl().indexOf('https://') === 0;
   }
-  /* ── cloud scenes + photo storage ──
-     Signed in, the whole set of folders is kept in one Supabase `scenes` row and
-     uploaded photos live in Cloudflare R2, so the save is no longer bounded by the
-     browser's storage quota (the thing that made iOS lose work). */
-  mediaApiUrl() {
-    const config = (typeof window !== 'undefined' && window.PARALLEL_CONFIG) || {};
-    return String(config.MEDIA_API_URL || '').replace(/\/+$/, '');
-  }
-  mediaPublicUrl() {
-    const config = (typeof window !== 'undefined' && window.PARALLEL_CONFIG) || {};
-    return String(config.MEDIA_PUBLIC_URL || 'https://media.parallelsocials.cc').replace(/\/+$/, '');
-  }
-  async mediaRequest(path, options) {
-    const sb = this.sb();
-    if (!sb || !this.state.user) throw new Error('Please sign in again.');
-    const { data, error: sessionError } = await sb.auth.getSession();
-    const session = data && data.session;
-    const accessToken = session && session.access_token;
-    if (sessionError || !accessToken) throw new Error('Please sign in again.');
-    const apiUrl = this.mediaApiUrl();
-    if (!apiUrl) throw new Error('Photo storage is not configured.');
-    const opts = Object.assign({}, options || {});
-    const headers = new Headers(opts.headers || {});
-    headers.set('Authorization', 'Bearer ' + accessToken);
-    opts.headers = headers;
-    const response = await fetch(apiUrl + path, opts);
+  async apiRequest(path, options) {
+    const base = this.apiUrl();
+    if (!base) throw new Error('Cloud service is not configured.');
+    const opts = Object.assign({}, options || {}, { credentials: 'include' });
+    const response = await fetch(base + path, opts);
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const error = new Error(result.error || ('Media service returned ' + response.status));
+      const error = new Error(result.message || result.error || ('Cloud service returned ' + response.status));
       error.code = result.code || '';
       error.status = response.status;
       error.details = result;
       throw error;
     }
     return result;
+  }
+  activateUser(u) {
+    this._cloudReady = false;
+    this.setState({ user: u || null, authMsg: '' }, async () => {
+      if (!u) {
+        this._cloudReady = true;
+        this.setState({ savedProfiles: [], cloudState: '', cloudMsg: '', mediaUsage: null, mediaUsageState: '' });
+        return;
+      }
+      await Promise.all([this.loadProfiles(), this.cloudPull(), this.loadMediaUsage()]);
+      this._cloudReady = true;
+      this.queueSceneSave();
+    });
+  }
+  initAuth() {
+    if (!this.apiLive()) return;
+    if (this._authInitialized) return;
+    this._authInitialized = true;
+    this.apiRequest('/v1/me').then(result => this.activateUser(result.user || null)).catch(error => {
+      if (error && error.status === 401) this.activateUser(null);
+      else this.setState({ authMsg: 'Accounts are temporarily unavailable.' });
+    });
+  }
+  /* ── cloud scenes + photo storage ──
+     Signed in, the whole set of folders is kept in one Supabase `scenes` row and
+     uploaded photos live in Cloudflare R2, so the save is no longer bounded by the
+     browser's storage quota (the thing that made iOS lose work). */
+  mediaPublicUrl() {
+    const config = (typeof window !== 'undefined' && window.PARALLEL_CONFIG) || {};
+    return String(config.MEDIA_PUBLIC_URL || 'https://media.parallelsocials.cc').replace(/\/+$/, '');
+  }
+  async mediaRequest(path, options) {
+    if (!this.state.user) throw new Error('Please sign in again.');
+    return this.apiRequest(path, options);
   }
   async prepareMediaBlob(dataUrl) {
     const source = await (await fetch(dataUrl)).blob();
@@ -5695,7 +5651,7 @@ class Component extends DCLogic {
     }
   }
   async loadMediaUsage() {
-    if (!this.state.user || !this.sb()) return;
+    if (!this.state.user || !this.apiLive()) return;
     this.setState({ mediaUsageState: 'loading' });
     try {
       const usage = await this.mediaRequest('/v1/media/usage');
@@ -5726,8 +5682,8 @@ class Component extends DCLogic {
     }
   }
   async uploadPhoto(dataUrl) {
-    const sb = this.sb(), u = this.state.user;
-    if (!sb || !u || typeof dataUrl !== 'string' || dataUrl.indexOf('data:image') !== 0) return null;
+    const u = this.state.user;
+    if (!this.apiLive() || !u || typeof dataUrl !== 'string' || dataUrl.indexOf('data:image') !== 0) return null;
     try {
       const blob = await this.prepareMediaBlob(dataUrl);
       const result = await this.mediaRequest('/v1/media', {
@@ -5749,8 +5705,7 @@ class Component extends DCLogic {
   }
   // Lifts any photo still stored inline (uploaded before signing in) into the bucket.
   async uploadInlinePhotos() {
-    const sb = this.sb();
-    if (!sb || !this.state.user) return;
+    if (!this.apiLive() || !this.state.user) return;
     const found = new Set();
     const collect = v => {
       if (typeof v === 'string') { if (v.indexOf('data:image') === 0) found.add(v); return; }
@@ -5775,26 +5730,34 @@ class Component extends DCLogic {
     this.setState(st => ({ people: swap(st.people), messages: swap(st.messages), ui: swap(st.ui), story: swap(st.story), worldScenes: swap(st.worldScenes) }));
   }
   async cloudPush(payload) {
-    const sb = this.sb(), u = this.state.user;
-    if (!sb || !u) return;
+    const u = this.state.user;
+    if (!this.apiLive() || !u) return;
     this.setState({ cloudState: 'saving' });
     // Photos are URLs once signed in; anything still inline is left out of the row so it
     // can never grow past the API request limit.
     const body = this.stripDataImages(payload);
-    const { error } = await sb.from('scenes')
-      .upsert({ user_id: u.id, payload: body, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
-    this.setState({ cloudState: error ? 'error' : 'saved', cloudMsg: error ? ('Cloud save failed: ' + error.message) : '' });
-    if (!error) {
+    try {
+      await this.apiRequest('/v1/scenes', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ payload: body })
+      });
+      this.setState({ cloudState: 'saved', cloudMsg: '' });
       try { await this.syncMediaReferences(body); }
       catch (e) { /* Reference timestamps are retried on the next successful cloud save. */ }
+    } catch (error) {
+      this.setState({ cloudState: 'error', cloudMsg: 'Cloud save failed: ' + ((error && error.message) || 'Please try again.') });
     }
   }
   async cloudPull() {
-    const sb = this.sb(), u = this.state.user;
-    if (!sb || !u) return;
-    const { data, error } = await sb.from('scenes').select('payload').eq('user_id', u.id).maybeSingle();
-    if (error) { this.setState({ cloudMsg: 'Could not open your cloud save: ' + error.message }); return; }
-    const p = data && data.payload;
+    const u = this.state.user;
+    if (!this.apiLive() || !u) return;
+    let p = null;
+    try {
+      const result = await this.apiRequest('/v1/scenes');
+      p = result && result.payload;
+    } catch (error) {
+      this.setState({ cloudMsg: 'Could not open your cloud save: ' + ((error && error.message) || 'Please try again.') });
+      return;
+    }
     if (p && Array.isArray(p.worlds) && p.worlds.length && p.worldScenes) {
       const worlds = this.normalizeWorlds(p.worlds);
       const activeId = (p.worldScenes[p.activeWorld] && worlds.some(w => w.id === p.activeWorld)) ? p.activeWorld : worlds[0].id;
@@ -5806,11 +5769,13 @@ class Component extends DCLogic {
     await this.uploadInlinePhotos();
   }
   async loadProfiles() {
-    const sb = this.sb();
-    if (!sb) return;
-    const { data, error } = await sb.from('saved_profiles').select('*').order('created_at', { ascending: true });
-    if (error) { this.setState({ authMsg: 'Could not load profiles: ' + error.message }); return; }
-    this.setState({ savedProfiles: data || [] });
+    if (!this.apiLive()) return;
+    try {
+      const result = await this.apiRequest('/v1/profiles');
+      this.setState({ savedProfiles: result.profiles || [] });
+    } catch (error) {
+      this.setState({ authMsg: 'Could not load profiles: ' + ((error && error.message) || 'Please try again.') });
+    }
   }
   async authWithTimeout(request) {
     let timer = null;
@@ -5822,58 +5787,59 @@ class Component extends DCLogic {
     }
   }
   async doSignIn() {
-    const sb = this.sb();
-    if (!sb) return;
+    if (!this.apiLive()) return;
     this.setState({ authBusy: true, authMsg: '' });
     try {
-      const result = await this.authWithTimeout(() => sb.auth.signInWithPassword({ email: this.state.authEmail.trim(), password: this.state.authPassword }));
+      const result = await this.authWithTimeout(() => this.apiRequest('/api/auth/sign-in/email', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: this.state.authEmail.trim(), password: this.state.authPassword })
+      }));
       if (result && result.__parallelAuthTimedOut) {
         this.setState({ authBusy: false, authMsg: 'This is taking longer than expected. Check your connection, then try signing in again.' });
         return;
       }
-      const { error } = result || {};
-      this.setState({ authBusy: false, authMsg: error ? error.message : '', authPassword: error ? this.state.authPassword : '' });
+      this.setState({ authBusy: false, authMsg: '', authPassword: '' });
+      this.activateUser(result && result.user ? result.user : null);
     } catch (error) {
-      this.setState({ authBusy: false, authMsg: 'Could not sign in. Please try again.' });
+      this.setState({ authBusy: false, authMsg: (error && error.message) || 'Could not sign in. Please try again.' });
     }
   }
   async doSignUp() {
-    const sb = this.sb();
-    if (!sb) return;
+    if (!this.apiLive()) return;
     this.setState({ authBusy: true, authMsg: '' });
     try {
-      const result = await this.authWithTimeout(() => sb.auth.signUp({
-        email: this.state.authEmail.trim(), password: this.state.authPassword,
-        options: { emailRedirectTo: window.location.href.split('#')[0] }
+      const email = this.state.authEmail.trim();
+      const result = await this.authWithTimeout(() => this.apiRequest('/api/auth/sign-up/email', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: email.split('@')[0] || 'Parallel user', email: email, password: this.state.authPassword })
       }));
       if (result && result.__parallelAuthTimedOut) {
         this.setState({ authBusy: false, authMsg: 'This is taking longer than expected. Check your connection, then try creating your account again.' });
         return;
       }
-      const { data, error } = result || {};
-      if (error) this.setState({ authBusy: false, authMsg: error.message });
-      else if (data && data.session) this.setState({ authBusy: false, authMsg: '' });
-      else this.setState({ authBusy: false, authPassword: '', authMsg: 'Check your inbox — confirm your email address, then come back and sign in.' });
+      this.setState({ authBusy: false, authPassword: '', authMsg: '' });
+      this.activateUser(result && result.user ? result.user : null);
     } catch (error) {
-      this.setState({ authBusy: false, authMsg: 'Could not create your account. Please try again.' });
+      this.setState({ authBusy: false, authMsg: (error && error.message) || 'Could not create your account. Please try again.' });
     }
   }
   async doGoogle() {
-    const sb = this.sb();
-    if (!sb || !this.googleAuthLive()) return;
+    if (!this.googleAuthLive()) return;
     this.setState({ authBusy: true, authMsg: '' });
-    const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href.split('#')[0] } });
-    if (error) this.setState({ authBusy: false, authMsg: error.message });
+    try {
+      const callbackURL = window.location.href.split('#')[0];
+      window.location.assign(this.apiUrl() + '/v1/auth/google?callbackURL=' + encodeURIComponent(callbackURL));
+    } catch (error) {
+      this.setState({ authBusy: false, authMsg: (error && error.message) || 'Could not start Google sign-in.' });
+    }
   }
   async doSignOut() {
-    const sb = this.sb();
-    if (!sb) return;
-    await sb.auth.signOut();
-    this.setState({ user: null, savedProfiles: [], authMsg: '', mediaUsage: null, mediaUsageState: '' });
+    if (!this.apiLive()) return;
+    try { await this.apiRequest('/api/auth/sign-out', { method: 'POST' }); } catch (e) {}
+    this.activateUser(null);
   }
   async saveProfile(p) {
-    const sb = this.sb();
-    if (!sb || !this.state.user) return;
+    if (!this.apiLive() || !this.state.user) return;
     if (this.state.savedProfiles.length >= 25) {
       this.setState({ accountOpen: true, authMsg: 'You have reached 25 saved profiles. Delete one to make room.' });
       return;
@@ -5883,16 +5849,21 @@ class Component extends DCLogic {
       color: p.color || '#8e8e93', verified: !!p.verified,
       followers: Number(p.followers) || 0, following: Number(p.following) || 0, bio: p.bio || ''
     };
-    const { error } = await sb.from('saved_profiles').insert(row);
-    if (error) { this.setState({ accountOpen: true, authMsg: 'Could not save: ' + error.message }); return; }
+    try {
+      await this.apiRequest('/v1/profiles', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(row)
+      });
+    } catch (error) {
+      this.setState({ accountOpen: true, authMsg: 'Could not save: ' + ((error && error.message) || 'Please try again.') });
+      return;
+    }
     await this.loadProfiles();
     this.setState({ accountOpen: true, authMsg: 'Saved ' + row.name + ' to your account.' });
   }
   async deleteProfile(id) {
-    const sb = this.sb();
-    if (!sb) return;
-    const { error } = await sb.from('saved_profiles').delete().eq('id', id);
-    if (error) { this.setState({ authMsg: error.message }); return; }
+    if (!this.apiLive()) return;
+    try { await this.apiRequest('/v1/profiles/' + encodeURIComponent(id), { method: 'DELETE' }); }
+    catch (error) { this.setState({ authMsg: (error && error.message) || 'Could not delete profile.' }); return; }
     this.loadProfiles();
   }
   useProfile(row) {
@@ -5915,20 +5886,22 @@ class Component extends DCLogic {
     throw new Error('Media cleanup needs another attempt. Please try deleting the account again.');
   }
   async doDeleteAccount() {
-    const sb = this.sb();
-    if (!sb) return;
+    if (!this.apiLive()) return;
     if (!window.confirm('Delete your account, all Cloudflare media, saved profiles and your sign-in? This cannot be undone.')) return;
     this.setState({ authBusy: true, authMsg: '' });
     try {
-      await this.deleteAccountMedia();
-    } catch (e) {
-      this.setState({ authBusy: false, authMsg: 'Could not remove your cloud media: ' + ((e && e.message) || 'Please try again.') });
-      return;
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        const result = await this.apiRequest('/v1/account', { method: 'DELETE' });
+        if (result && result.ok) {
+          this._cloudReady = true;
+          this.setState({ authBusy: false, user: null, savedProfiles: [], mediaUsage: null, mediaUsageState: '', authMsg: 'Your account has been deleted.' });
+          return;
+        }
+      }
+      throw new Error('Media cleanup needs another attempt.');
+    } catch (error) {
+      this.setState({ authBusy: false, authMsg: 'Could not delete: ' + ((error && error.message) || 'Please try again.') });
     }
-    const { error } = await sb.rpc('delete_own_account');
-    if (error) { this.setState({ authBusy: false, authMsg: 'Could not delete: ' + error.message }); return; }
-    await sb.auth.signOut();
-    this.setState({ authBusy: false, user: null, savedProfiles: [], mediaUsage: null, mediaUsageState: '', authMsg: 'Your account has been deleted.' });
   }
 
   resetAll() {
@@ -8571,13 +8544,11 @@ class Component extends DCLogic {
       openAccount: () => this.setState({ accountOpen: true, authMsg: '' }),
       accountsLive: this.accountsLive(),
       closeAccount: () => this.setState({ accountOpen: false, authMsg: '' }),
-      accountsOff: !this.sb(),
-      // Accounts stay behind the Coming Soon panel until ACCOUNTS_ENABLED is switched on in
-      // the config block at the top of the file (and Supabase is filled in there too).
+      accountsOff: !this.apiLive(),
       accountsEnabled: this.accountsLive(),
       accountsComingSoon: !this.accountsLive(),
       googleEnabled: this.googleAuthLive(),
-      showAuthForm: !!this.sb() && !s.user,
+      showAuthForm: this.apiLive() && !s.user,
       signedIn: !!s.user,
       userEmail: s.user ? s.user.email : '',
       accountLabel: s.user ? 'Account ●' : 'Account',
