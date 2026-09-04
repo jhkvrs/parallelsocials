@@ -282,7 +282,7 @@
           <div class="pl-overlay-notif-wrap" style="{{ overlayWrapStyle }}">
             <sc-for list="{{ overlayNotifCards }}" as="n" hint-placeholder-count="1">
               <div class="pl-overlay-notif-card" style="{{ overlayCardStyle }}">
-                <span class="pl-notif-mirror"></span>
+                <span class="pl-notif-mirror" style="{{ overlayMirrorStyle }}"></span>
                 <sc-if value="{{ n.usePerson }}" hint-placeholder-val="{{ false }}">
                   <div style="{{ n.perAvStyle }}">{{ n.perAvText }}<span style="{{ n.perBadgeStyle }}"><sc-if value="{{ n.badgeMsg }}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><path d="M12 4C7.6 4 4 6.9 4 10.4c0 2 1 3.8 2.7 5-.1 1-.6 1.9-1.2 2.6 1.1-.2 2.2-.6 3.1-1.2.7.2 1.5.3 2.4.3 4.4 0 8-2.9 8-6.5S16.4 4 12 4z"></path></svg></sc-if><sc-if value="{{ n.isIg }}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><rect x="3.5" y="3.5" width="17" height="17" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.2" cy="6.8" r="1.2" fill="#fff" stroke="none"></circle></svg></sc-if><sc-if value="{{ n.isDc }}" hint-placeholder-val="{{ false }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M19 6.5A16 16 0 0 0 15 5.3l-.3.5a12 12 0 0 1 3.4 1.6 12.6 12.6 0 0 0-9.2 0A12 12 0 0 1 12.3 5.8L12 5.3A16 16 0 0 0 8 6.5C5.4 10.3 4.7 14 5 17.6a16 16 0 0 0 4.9 2.4l.6-1a10 10 0 0 1-1.7-.8l.4-.3a11.4 11.4 0 0 0 9.6 0l.4.3a10 10 0 0 1-1.7.8l.6 1a16 16 0 0 0 4.9-2.4c.4-4.2-.7-7.9-3-11.1zM9.7 15.3c-.9 0-1.7-.9-1.7-1.9s.8-1.9 1.7-1.9 1.7.9 1.7 1.9-.8 1.9-1.7 1.9zm4.6 0c-.9 0-1.7-.9-1.7-1.9s.8-1.9 1.7-1.9 1.7.9 1.7 1.9-.8 1.9-1.7 1.9z"></path></svg></sc-if><sc-if value="{{ n.isX }}" hint-placeholder-val="{{ false }}"><svg width="10" height="10" viewBox="0 0 24 24" fill="#fff"><path d="M17.5 3h3l-6.6 7.5L22 21h-6l-4.3-5.6L6.8 21H3.7l7-8L2.5 3h6.1l3.9 5.1L17.5 3z"></path></svg></sc-if><sc-if value="{{ n.isPhone }}" hint-placeholder-val="{{ false }}"><svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25c1.1.37 2.3.57 3.5.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.2.2 2.4.57 3.5a1 1 0 0 1-.25 1z"></path></svg></sc-if></span></div>
                 </sc-if>
@@ -302,7 +302,7 @@
                 <div style="min-width:0;flex:1">
                   <div style="display:flex;align-items:baseline;gap:8px">
                     <span style="{{ overlayTitleStyle }}">{{ n.title }}</span>
-                    <span style="{{ overlayTimeStyle }};margin-left:auto">{{ n.time }}</span>
+                    <span style="{{ overlayTimeStyle }}">{{ n.time }}</span>
                   </div>
                   <sc-if value="{{ n.hasSub }}" hint-placeholder-val="{{ false }}"><div style="{{ overlaySubStyle }}">{{ n.sub }}</div></sc-if>
                   <div style="{{ overlayTextStyle }}">{{ n.text }}</div>
@@ -556,9 +556,10 @@
                <div style="display:flex;gap:4px;flex-wrap:wrap;border:1px solid var(--color-divider);border-radius:999px;padding:3px;width:fit-content"><sc-for list="{{ twPostEditor.authorOpts }}" as="pa" hint-placeholder-count="2"><button style="{{ pa.style }}" onClick="{{ pa.onPick }}">{{ pa.label }}</button></sc-for></div>
                <textarea class="input" style="min-height:68px;font-size:13px;margin-top:var(--space-2)" value="{{ twPostEditor.text }}" onChange="{{ twPostEditor.onText }}" placeholder="Write the post text"></textarea>
                <div style="display:flex;gap:var(--space-2);align-items:center;margin-top:var(--space-2)">
-                 <label class="btn btn-secondary" style="cursor:pointer;flex:1;justify-content:flex-start;border-radius:999px">Upload post image<input type="file" accept="image/*" onChange="{{ twPostEditor.onImage }}" style="display:none"></label>
-                 <sc-if value="{{ twPostEditor.hasImage }}" hint-placeholder-val="{{ false }}"><div style="{{ twPostEditor.imageStyle }}"></div><button class="btn btn-secondary" style="border-radius:999px" onClick="{{ twPostEditor.onClearImage }}">Clear</button></sc-if>
+                 <label class="btn btn-secondary" style="cursor:pointer;flex:1;justify-content:flex-start;border-radius:999px">Add photos ({{ twPostEditor.imageCount }}/4)<input type="file" accept="image/*" multiple onChange="{{ twPostEditor.onImages }}" style="display:none"></label>
+                 <sc-if value="{{ twPostEditor.hasImages }}" hint-placeholder-val="{{ false }}"><button class="btn btn-secondary" style="border-radius:999px" onClick="{{ twPostEditor.onClearImages }}">Clear all</button></sc-if>
                </div>
+               <sc-if value="{{ twPostEditor.hasImages }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><sc-for list="{{ twPostEditor.images }}" as="pi" hint-placeholder-count="1"><div style="{{ pi.wrapStyle }}"><div style="{{ pi.style }}"></div><button style="{{ pi.removeStyle }}" onClick="{{ pi.onRemove }}" title="Remove photo">×</button></div></sc-for></div></sc-if>
                <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:var(--space-2)">
                  <input class="input" type="number" min="0" value="{{ twPostEditor.statReply }}" onChange="{{ twPostEditor.onStatReply }}" placeholder="Replies" style="flex:1;min-width:68px;font-size:12px">
                  <input class="input" type="number" min="0" value="{{ twPostEditor.statRt }}" onChange="{{ twPostEditor.onStatRt }}" placeholder="Reposts" style="flex:1;min-width:68px;font-size:12px">
@@ -641,8 +642,8 @@
                   </div>
                 </div>
                 <div style="{{ twDetailTextStyle }}">{{ tw0.text }}</div>
-                <sc-if value="{{ tw0.isImage }}" hint-placeholder-val="{{ false }}">
-                  <div style="{{ tw0.imgStyle }}"></div>
+                <sc-if value="{{ tw0.hasMedia }}" hint-placeholder-val="{{ false }}">
+                  <div style="{{ tw0.mediaStyle }}"><sc-for list="{{ tw0.mediaItems }}" as="mi" hint-placeholder-count="1"><div style="{{ mi.style }}"></div></sc-for></div>
                 </sc-if>
                 <sc-if value="{{ twShowQuote }}" hint-placeholder-val="{{ false }}">
                   <div style="{{ twQuoteCardStyle }}">
@@ -705,8 +706,8 @@
                       </div>
                       <sc-if value="{{ r.replyLine }}" hint-placeholder-val="{{ false }}"><div style="{{ r.replyLineStyle }}">{{ r.replyLine }}</div></sc-if>
                       <div style="{{ r.bubbleStyle }}">{{ r.text }}</div>
-                      <sc-if value="{{ r.isImage }}" hint-placeholder-val="{{ false }}">
-                        <div style="{{ r.imgStyle }}"></div>
+                      <sc-if value="{{ r.hasMedia }}" hint-placeholder-val="{{ false }}">
+                        <div style="{{ r.mediaStyle }}"><sc-for list="{{ r.mediaItems }}" as="mi" hint-placeholder-count="1"><div style="{{ mi.style }}"></div></sc-for></div>
                       </sc-if>
                       <div style="{{ twListActionRow }}">
                         <span style="{{ twActionStyle }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-3.4-.6L3 21l1.8-4.8A8.2 8.2 0 0 1 3.6 11.5 8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z"></path></svg>{{ r.cReply }}</span>
@@ -1310,7 +1311,11 @@
                   <sc-if value="{{ fbQuoteHasImage }}" hint-placeholder-val="{{ false }}"><div style="{{ fbQuoteImgStyle }}"></div></sc-if>
                 </div>
               </sc-if>
-              <sc-if value="{{ fbPost.isImage }}" hint-placeholder-val="{{ false }}"><div style="{{ fbPost.imgStyle }}"></div></sc-if>
+              <sc-if value="{{ fbPost.hasMedia }}" hint-placeholder-val="{{ false }}">
+                <div style="{{ fbPost.mediaStyle }}">
+                  <sc-for list="{{ fbPost.mediaItems }}" as="mi" hint-placeholder-count="1"><div style="{{ mi.style }}"><sc-if value="{{ mi.showOverlay }}" hint-placeholder-val="{{ false }}"><span style="{{ mi.overlayStyle }}">{{ mi.overlay }}</span></sc-if></div></sc-for>
+                </div>
+              </sc-if>
               <sc-if value="{{ fbPost.hasStats }}" hint-placeholder-val="{{ true }}">
                 <div style="{{ fbStatRowStyle }}">
                   <sc-if value="{{ fbPost.hasReacts }}" hint-placeholder-val="{{ true }}"><span style="{{ fbReactPillStyle }}"><span style="display:inline-flex"><sc-for list="{{ fbPillIcons }}" as="pi" hint-placeholder-count="2"><img src="{{ pi.src }}" style="{{ pi.style }}"></sc-for></span>{{ fbPost.reacts }}</span></sc-if>
@@ -1593,6 +1598,7 @@
             <sc-for list="{{ worldTabs }}" as="w" hint-placeholder-count="1">
               <span style="{{ w.wrapStyle }}">
                 <button style="{{ w.tabStyle }}" onClick="{{ w.onSelect }}" title="Switch to this folder">{{ w.name }}</button>
+                <button style="{{ w.dupStyle }}" onClick="{{ w.onDuplicate }}" title="Duplicate folder">⧉</button>
                 <sc-if value="{{ w.canDelete }}" hint-placeholder-val="{{ false }}"><button style="{{ w.delStyle }}" onClick="{{ w.onDelete }}" title="Delete folder">×</button></sc-if>
               </span>
             </sc-for>
@@ -1812,7 +1818,7 @@
             <button style="{{ overlayToggleVM.trackStyle }}" onClick="{{ overlayToggleVM.onToggle }}" aria-pressed="{{ overlayToggleVM.on }}"><span style="{{ overlayToggleVM.knobStyle }}"></span></button>
           </div>
           </sc-if>
-          <p style="margin:0 0 var(--space-3);font-size:12px;color:color-mix(in srgb,var(--color-text) 55%,transparent)">A banner that drops in over the mockup, just below the status bar — like a notification arriving while the phone is open. It follows the light/dark setting.</p>
+          <p style="margin:0 0 var(--space-3);font-size:12px;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Add one or more notification cards. Each card surface follows the light/dark appearance setting.</p>
           <div style="display:flex;flex-direction:column;gap:var(--space-2)">
             <sc-for list="{{ overlayNotifRows }}" as="ov" hint-placeholder-count="1">
               <div style="{{ ov.rowStyle }}" onDragOver="{{ ov.onDragOver }}" onDrop="{{ ov.onDrop }}">
@@ -1896,9 +1902,10 @@
               <textarea class="input" style="min-height:68px;font-size:13px;margin-top:var(--space-2)" value="{{ twPostEditor.text }}" onChange="{{ twPostEditor.onText }}" placeholder="Write the post text"></textarea>
               <div style="font-size:11px;color:color-mix(in srgb,var(--color-text) 55%,transparent);margin-top:5px">Mentions: type @name for one word, or (@Full Name) when the name has spaces. Parentheses are hidden in the preview and export.</div>
               <div style="display:flex;gap:var(--space-2);align-items:center;margin-top:var(--space-2)">
-                <label class="btn btn-secondary" style="cursor:pointer;flex:1;justify-content:flex-start;border-radius:999px">Upload post image<input type="file" accept="image/*" onChange="{{ twPostEditor.onImage }}" style="display:none"></label>
-                <sc-if value="{{ twPostEditor.hasImage }}" hint-placeholder-val="{{ false }}"><div style="{{ twPostEditor.imageStyle }}"></div><button class="btn btn-secondary" style="border-radius:999px" onClick="{{ twPostEditor.onClearImage }}">Clear</button></sc-if>
+                <label class="btn btn-secondary" style="cursor:pointer;flex:1;justify-content:flex-start;border-radius:999px">Add photos ({{ twPostEditor.imageCount }}/4)<input type="file" accept="image/*" multiple onChange="{{ twPostEditor.onImages }}" style="display:none"></label>
+                <sc-if value="{{ twPostEditor.hasImages }}" hint-placeholder-val="{{ false }}"><button class="btn btn-secondary" style="border-radius:999px" onClick="{{ twPostEditor.onClearImages }}">Clear all</button></sc-if>
               </div>
+              <sc-if value="{{ twPostEditor.hasImages }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><sc-for list="{{ twPostEditor.images }}" as="pi" hint-placeholder-count="1"><div style="{{ pi.wrapStyle }}"><div style="{{ pi.style }}"></div><button style="{{ pi.removeStyle }}" onClick="{{ pi.onRemove }}" title="Remove photo">×</button></div></sc-for></div></sc-if>
               <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:var(--space-2)">
                 <label style="display:flex;flex-direction:column;gap:3px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:color-mix(in srgb,var(--color-text) 55%,transparent)">Time
                   <input class="input" value="{{ twTimeVal }}" onChange="{{ onTwTime }}" placeholder="9:41" style="font-size:12px"></label>
@@ -2020,9 +2027,9 @@
           <div class="{{ panelAnimCls.instagram }}"><div>
           <div class="field">
             <label>Whose profile</label>
-            <div style="display:flex;gap:var(--space-2);flex-wrap:wrap">
-              <sc-for list="{{ igProfileOpts }}" as="ip" hint-placeholder-count="2"><button style="{{ ip.style }}" onClick="{{ ip.onPick }}">{{ ip.label }}</button></sc-for>
-            </div>
+            <select class="input" value="{{ igProfileId }}" onChange="{{ onIgProfileSelect }}" aria-label="Whose Instagram profile" style="min-height:38px;border-radius:12px">
+              <sc-for list="{{ igProfileOpts }}" as="ip" hint-placeholder-count="2"><option value="{{ ip.value }}">{{ ip.label }}</option></sc-for>
+            </select>
           </div>
 
           <sc-if value="{{ isIgProfile }}" hint-placeholder-val="{{ true }}">
@@ -2445,9 +2452,11 @@
                 </div>
               </div>
               <div style="display:flex;gap:var(--space-2);margin-top:var(--space-2)">
-                <label class="btn btn-secondary" style="cursor:pointer;flex:1;justify-content:flex-start;border-radius:999px">Upload photo<input type="file" accept="image/*" onChange="{{ onFbPostImg }}" style="display:none"></label>
-                <sc-if value="{{ fbPostHasImg }}" hint-placeholder-val="{{ false }}"><button class="btn btn-secondary" style="border-radius:999px" onClick="{{ clearFbPostImg }}">Clear</button></sc-if>
+                <label class="btn btn-secondary" style="cursor:pointer;flex:1;justify-content:flex-start;border-radius:999px">Add photos ({{ fbPostImageCount }}/5)<input type="file" accept="image/*" multiple onChange="{{ onFbPostImages }}" style="display:none"></label>
+                <sc-if value="{{ fbPostHasImages }}" hint-placeholder-val="{{ false }}"><button class="btn btn-secondary" style="border-radius:999px" onClick="{{ clearFbPostImages }}">Clear all</button></sc-if>
               </div>
+              <sc-if value="{{ fbPostHasImages }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><sc-for list="{{ fbPostEditorImages }}" as="pi" hint-placeholder-count="1"><div style="{{ pi.wrapStyle }}"><div style="{{ pi.style }}"></div><button style="{{ pi.removeStyle }}" onClick="{{ pi.onRemove }}" title="Remove photo">×</button></div></sc-for></div></sc-if>
+              <sc-if value="{{ fbPostShowsOverlay }}" hint-placeholder-val="{{ false }}"><div class="field" style="margin-top:var(--space-2);max-width:190px"><label>Last photo overlay number</label><input class="input" type="number" min="1" value="{{ fbPhotoOverlay }}" onChange="{{ onFbPhotoOverlay }}" placeholder="1"><div style="font-size:11px;color:color-mix(in srgb,var(--color-text) 55%,transparent);margin-top:5px">Shown as +number over the fifth photo.</div></div></sc-if>
               <div style="display:flex;gap:var(--space-2);margin-top:var(--space-2)">
                 <div class="field" style="flex:1"><label>Likes</label><input class="input" type="number" min="0" value="{{ fbLikes }}" onChange="{{ onFbLikes }}" placeholder="128"></div>
                 <div class="field" style="flex:1"><label>Comments</label><input class="input" type="number" min="0" value="{{ fbCommentsN }}" onChange="{{ onFbCommentsN }}" placeholder="24"></div>
@@ -3082,6 +3091,76 @@ function plStat(m, k, d) {
   const st = m.stats || {};
   return st[k] === undefined || st[k] === null || st[k] === '' ? d : Number(st[k]);
 }
+function plPostImages(post, limit) {
+  const source = post || {};
+  const raw = Array.isArray(source.images) && source.images.length
+    ? source.images
+    : (source.image ? [{ id: 'legacy-image', src: source.image, ar: source.imageAR }] : []);
+  return raw.map((item, index) => {
+    const obj = typeof item === 'string' ? { src: item } : (item || {});
+    return {
+      id: obj.id || ('media-' + index),
+      src: obj.src || obj.url || '',
+      ar: Number(obj.ar || obj.aspectRatio) || 1.333
+    };
+  }).filter(item => !!item.src).slice(0, limit || raw.length);
+}
+function plPostImagesPatch(images) {
+  const clean = (images || []).filter(item => item && item.src).map(item => ({ id: item.id || plUid(), src: item.src, ar: Number(item.ar) || 1.333 }));
+  return {
+    images: clean,
+    image: clean.length ? clean[0].src : null,
+    imageAR: clean.length ? clean[0].ar : 1.333
+  };
+}
+function plMediaGrid(post, limit, kind, line, surface, marginTop) {
+  const media = plPostImages(post, limit);
+  const count = media.length;
+  const facebook = kind === 'facebook';
+  const style = {
+    width: '100%', display: count ? 'grid' : 'none', overflow: 'hidden', position: 'relative',
+    marginTop: marginTop || '0', gap: count > 1 ? '2px' : '0', background: line || surface,
+    borderRadius: facebook ? '0' : '16px',
+    border: facebook ? 'none' : ('1px solid ' + line),
+    boxSizing: 'border-box'
+  };
+  if (count === 1) {
+    style.gridTemplateColumns = 'minmax(0,1fr)';
+    style.aspectRatio = String(media[0].ar || (facebook ? 1.2 : 1.333));
+  } else if (facebook && count === 5) {
+    style.gridTemplateColumns = 'repeat(6,minmax(0,1fr))';
+    style.gridTemplateRows = 'repeat(2,minmax(0,1fr))';
+    style.aspectRatio = '3 / 2';
+  } else {
+    style.gridTemplateColumns = 'repeat(2,minmax(0,1fr))';
+    style.gridTemplateRows = count >= 3 ? 'repeat(2,minmax(0,1fr))' : 'minmax(0,1fr)';
+    style.aspectRatio = '2 / 1';
+  }
+  const overlayRaw = String((post && post.photoOverlay) || '1').trim();
+  const overlayLabel = overlayRaw.charAt(0) === '+' ? overlayRaw : ('+' + overlayRaw);
+  const items = media.map((item, index) => {
+    const itemStyle = {
+      minWidth: 0, minHeight: 0, position: 'relative', display: 'block',
+      backgroundImage: 'url(' + item.src + ')', backgroundSize: 'cover', backgroundPosition: 'center',
+      backgroundColor: surface || '#e4e6eb'
+    };
+    if (count === 3 && index === 0) itemStyle.gridRow = '1 / span 2';
+    if (facebook && count === 5) {
+      itemStyle.gridColumn = index < 2 ? 'span 3' : 'span 2';
+    }
+    return {
+      style: itemStyle,
+      showOverlay: facebook && count === 5 && index === 4,
+      overlay: overlayLabel,
+      overlayStyle: {
+        position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,.48)', color: '#fff', fontSize: '34px', fontWeight: 500,
+        textShadow: '0 1px 2px rgba(0,0,0,.25)'
+      }
+    };
+  });
+  return { has: count > 0, count: count, style: style, items: items };
+}
 function plScene() {
   return {
     platform: 'imessage',
@@ -3493,13 +3572,27 @@ class Component extends DCLogic {
     document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps, prevState) {
     this.applyMockupFontScale();
     this.syncLockNotificationBlur();
     this.queueOverlayNotificationBlur();
-    this.queueStandaloneNotificationBlur();
+    // Standalone notifications use their own opaque light/dark card surface.
+    // Never sample the optional canvas background into those cards.
+    this.clearStandaloneNotificationBlur();
     this.updateMini();
-    if (this._storageReady) this.queueSceneSave();
+    // Only user-editable scene state should schedule persistence. Cloud-save status,
+    // usage meters, cropper state and other UI feedback also call setState; treating
+    // those as edits made each completed save schedule the next save forever.
+    const sceneChanged = !prevState
+      || prevState.platform !== this.state.platform
+      || prevState.people !== this.state.people
+      || prevState.messages !== this.state.messages
+      || prevState.ui !== this.state.ui
+      || prevState.story !== this.state.story
+      || prevState.worlds !== this.state.worlds
+      || prevState.activeWorld !== this.state.activeWorld
+      || prevState.worldScenes !== this.state.worldScenes;
+    if (this._storageReady && sceneChanged) this.queueSceneSave();
   }
 
   queueSceneSave() {
@@ -3989,7 +4082,17 @@ class Component extends DCLogic {
     const platform = ['x', 'twitter-post', 'twitter-x'].indexOf(rawPlatform) >= 0 ? 'twitter' : rawPlatform;
     const rawTwMode = String(nextUi.twMode || '').toLowerCase();
     if (['tweet', 'dm', 'profile'].indexOf(rawTwMode) < 0) nextUi.twMode = 'tweet';
-    const people = Array.isArray(sc.people) && sc.people.length ? sc.people : base.people;
+    let people = Array.isArray(sc.people) && sc.people.length ? sc.people : base.people;
+    // Older saves stored the Instagram post count once for the whole folder.
+    // Move that value onto the selected profile so future profile switches do
+    // not leak the count to another person.
+    if (nextUi.igPostsCount !== undefined && nextUi.igPostsCount !== null) {
+      const legacyProfileId = nextUi.igProfileId;
+      people = people.map(person => person.id === legacyProfileId && person.postsCount === undefined
+        ? Object.assign({}, person, { postsCount: nextUi.igPostsCount })
+        : person);
+      delete nextUi.igPostsCount;
+    }
     let messages = Array.isArray(sc.messages) ? sc.messages : base.messages;
     if (platform === 'fbpost' && !messages.length) {
       const author = people.find(p => p && p.you) || people[0];
@@ -4030,6 +4133,30 @@ class Component extends DCLogic {
     });
   }
   addSubWorld() { this.addWorld(this.state.activeWorld); }
+  duplicateWorld(id) {
+    const newId = plUid();
+    this.setState(st => {
+      const sourceWorld = (st.worlds || []).find(w => w.id === id);
+      if (!sourceWorld) return null;
+      const scenes = Object.assign({}, st.worldScenes || {});
+      const activeScene = {
+        platform: st.platform, people: st.people, messages: st.messages, ui: st.ui, story: st.story
+      };
+      scenes[st.activeWorld] = activeScene;
+      const sourceScene = id === st.activeWorld ? activeScene : (scenes[id] || plScene());
+      const duplicate = this.cloneScene(sourceScene);
+      scenes[newId] = duplicate;
+      const worlds = this.normalizeWorlds(st.worlds).concat([{
+        id: newId,
+        name: (sourceWorld.name || 'Folder') + ' copy',
+        parentId: sourceWorld.parentId || null
+      }]);
+      return Object.assign({
+        worlds: worlds, activeWorld: newId, worldScenes: scenes,
+        openReply: null, openReact: null, storySel: null, menuOpen: false
+      }, this.applyScene(duplicate));
+    });
+  }
   renameWorld(id, name) {
     this.setState(st => ({ worlds: (st.worlds || []).map(w => w.id === id ? Object.assign({}, w, { name: name }) : w) }));
   }
@@ -4095,6 +4222,49 @@ class Component extends DCLogic {
   patchTwPost(patch) {
     this.setState(st => ({ ui: Object.assign({}, st.ui, { twPost: Object.assign({}, st.ui.twPost || st.messages[0] || {}, patch) }) }));
   }
+  setTwPostImages(fn) {
+    this.setState(st => {
+      const post = st.ui.twPost || st.messages[0] || {};
+      const images = fn(plPostImages(post, 4));
+      return { ui: Object.assign({}, st.ui, { twPost: Object.assign({}, post, plPostImagesPatch(images)) }) };
+    });
+  }
+  addTwPostImages(files) {
+    const post = this.state.ui.twPost || this.state.messages[0] || {};
+    const slots = Math.max(0, 4 - plPostImages(post, 4).length);
+    this.readImageBatch(files, 1200, slots, (item, firstDelivery) => {
+      this.setTwPostImages(images => {
+        const at = images.findIndex(image => image.id === item.id);
+        if (at >= 0) {
+          const next = images.slice(); next[at] = item; return next;
+        }
+        return firstDelivery && images.length < 4 ? images.concat([item]) : images;
+      });
+    });
+  }
+  removeTwPostImage(index) { this.setTwPostImages(images => images.filter((_, i) => i !== index)); }
+  setFbPostImages(messageId, fn) {
+    this.setState(st => ({
+      messages: st.messages.map(message => {
+        if (message.id !== messageId) return message;
+        return Object.assign({}, message, plPostImagesPatch(fn(plPostImages(message, 5))));
+      })
+    }));
+  }
+  addFbPostImages(messageId, files) {
+    const post = this.state.messages.find(message => message.id === messageId) || {};
+    const slots = Math.max(0, 5 - plPostImages(post, 5).length);
+    this.readImageBatch(files, 1080, slots, (item, firstDelivery) => {
+      this.setFbPostImages(messageId, images => {
+        const at = images.findIndex(image => image.id === item.id);
+        if (at >= 0) {
+          const next = images.slice(); next[at] = item; return next;
+        }
+        return firstDelivery && images.length < 5 ? images.concat([item]) : images;
+      });
+    });
+  }
+  removeFbPostImage(messageId, index) { this.setFbPostImages(messageId, images => images.filter((_, i) => i !== index)); }
   addTwReply() {
     this.setState(st => {
       const you = st.people.find(p => p.you) || st.people[0];
@@ -4452,6 +4622,25 @@ class Component extends DCLogic {
       img.src = fr.result;
     };
     fr.readAsDataURL(file);
+  }
+  readImageBatch(files, max, limit, cb) {
+    const selected = Array.from(files || []).slice(0, Math.max(0, Number(limit) || 0));
+    if (!selected.length) return;
+    const openNext = index => {
+      if (index >= selected.length) return;
+      const id = plUid();
+      let firstDelivery = true;
+      this.readImage(selected[index], max, (src, ar) => {
+        const first = firstDelivery;
+        firstDelivery = false;
+        cb({ id: id, src: src, ar: Number(ar) || 1.333 }, first);
+        // cropApply clears the current cropper after invoking its callback.
+        // Open the next selected photo on the following tick so it is not
+        // accidentally cleared along with the previous one.
+        if (first) setTimeout(() => openNext(index + 1), 0);
+      });
+    };
+    openNext(0);
   }
   cropFrame(cr) {
     // This coordinate space also drives drag movement in the compact editor.
@@ -5404,7 +5593,7 @@ class Component extends DCLogic {
     if (ios) await this.waitForIOSExportPaint(this.stageRef.current || this.boxRef.current, 180);
     this.syncLockNotificationBlur();
     await this.syncOverlayNotificationBlur(true);
-    await this.syncStandaloneNotificationBlur(true);
+    this.clearStandaloneNotificationBlur();
     // requestAnimationFrame never fires while the tab is in the background, so always give
     // these frame waits a timeout — otherwise switching tabs mid-export hangs it forever.
     await this.nextFrame();
@@ -6056,7 +6245,7 @@ class Component extends DCLogic {
     const overlayDark = dark;
     const shadowOn = ui.showShadow !== false;
     const iosOverlayFallback = this.isIOS();
-    const showStatusBarTop = !isStoryScreen && !isLock && !!ui.statusBar;
+    const showStatusBarTop = !isStoryScreen && !isLock && !isNotif && !!ui.statusBar;
     const tw = twDark
       ? { bg: '#000', text: '#e7e9ea', dim: '#71767b', line: '#2f3336', blue: '#1d9bf0', bubIn: '#2f3336', btn: '#e7e9ea', btnFg: '#0f1419' }
       : { bg: '#fff', text: '#0f1419', dim: '#536471', line: '#eff3f4', blue: '#1d9bf0', bubIn: '#eff3f4', btn: '#0f1419', btnFg: '#fff' };
@@ -6077,6 +6266,7 @@ class Component extends DCLogic {
 
     /* device shell */
     const lockBgCss = 'linear-gradient(165deg,#3a2b52 0%,#1a2340 48%,#070a14 100%)';
+    const notifChrome = notifDark ? '#1c1c1e' : '#f7f7f7';
     const lockMirrorBackground = ui.lockWallpaper ? 'linear-gradient(rgba(255,255,255,.14),rgba(255,255,255,.14)),url(' + ui.lockWallpaper + ')' : 'none';
     const dWidth = isDC ? (Number(ui.discordWidth) || 660) : (isStoryScreen ? (Number(ui.storyWidth) || 360) : (isLock ? (Number(ui.lockWidth) || 300) : (isTW ? (twIsDm ? (Number(ui.width) || 390) : (Number(ui.twWidth) || 560)) : (Number(ui.width) || 390))));
     const width = dWidth;
@@ -6089,12 +6279,13 @@ class Component extends DCLogic {
       fontFamily: mockupFontStack,
       borderRadius: (ui.cornerRadius !== undefined && ui.cornerRadius !== null) ? (ui.cornerRadius + 'px') : (isLock ? '52px' : (isDC ? '10px' : (isStoryScreen ? '18px' : (isTW ? (twIsDm ? '30px' : '16px') : '30px')))),
       aspectRatio: undefined,
+      // A standalone notification is only the notification card. Its device
+      // wrapper stays transparent over both ordinary and TikTok canvases.
       background: isNotif ? 'transparent' : (isLock ? lockBgCss : (isDC ? dc.bg : (isStoryScreen ? '#000' : (isTW ? tw.bg : (fbApp ? fb.bg : (igAny ? ig.bg : (isIM ? im.hdr : im.bg))))))),
       color: isLock ? '#fff' : (isDC ? dc.txt : (isTW ? tw.text : (fbApp ? fb.text : (igAny ? ig.txt : im.txt)))),
       boxShadow: (shadowOn && !isNotif) ? '0 18px 38px rgba(0,0,0,.32)' : 'none'
     }, (isLock && ui.lockWallpaper) ? { backgroundImage: 'url(' + ui.lockWallpaper + ')', backgroundSize: 'cover', backgroundPosition: 'center' } : {});
 
-    const notifChrome = notifDark ? '#1c1c1e' : '#f7f7f7';
     const chromeBg = isIgNotes ? '#0d1015' : (isNotif ? notifChrome : (fbApp ? fb.header : (isTW ? tw.bg : (isDC ? dc.bg : (igAny ? ig.bg : (ui.header ? im.hdr : im.bg))))));
     const chromeDark = isIgNotes || dark;
     const homeBarBg = isIgNotes ? '#0d1015'
@@ -6417,13 +6608,13 @@ class Component extends DCLogic {
             borderRadius: iMessageBubbleRadius(mine, first, last),
             background: mine ? imOut : im.bub, color: mine ? '#fff' : im.txt, position: 'relative', zIndex: 1
           },
-          tailStyle: (!m.deleted && last) ? {
+          tailStyle: (!m.deleted && last && !hasImg) ? {
             position: 'absolute', width: '9px', height: '10px', bottom: '0', zIndex: 0,
             right: mine ? '-6px' : 'auto', left: mine ? 'auto' : '-6px', background: mine ? imOut : im.bub,
             clipPath: mine ? 'polygon(0 0, 0 100%, 100% 100%)' : 'polygon(100% 0, 0 100%, 100% 100%)'
           } : { display: 'none' },
           tailCutoutStyle: { display: 'none' },
-          imgStyle: photo('230px', iMessageBubbleRadius(mine, first, last)),
+          imgStyle: photo('230px', '16px'),
           voiceStyle: voiceStyleFor(mine ? imOut : im.bub, mine ? '#fff' : im.txt, iMessageBubbleRadius(mine, first, last), '10px 12px', '236px'),
           voiceInk: mine ? '#fff' : im.txt,
           voiceDurationStyle: { marginLeft: 'auto', fontSize: '12px', whiteSpace: 'nowrap', color: mine ? 'rgba(255,255,255,.86)' : im.meta },
@@ -6610,6 +6801,7 @@ class Component extends DCLogic {
       const p = byId(m.author);
       const quoted = m.replyTo ? twReplyPool.find(x => x.id === m.replyTo) : null;
       const quotedPerson = quoted ? byId(quoted.author) : null;
+      const mediaGrid = plMediaGrid(m, 4, 'twitter', tw.line, tw.bg, '10px');
       return {
         rowStyle: { display: 'flex', gap: '12px', padding: '12px 16px 10px', borderBottom: (idx === list.length - 1 ? 'none' : '1px solid ' + tw.line) },
         avatarStyle: this.avatarVM(p, 40, 15).style,
@@ -6618,7 +6810,8 @@ class Component extends DCLogic {
         replyLine: quoted ? ('Replying to @' + plHandle(quotedPerson)) : '',
         replyLineStyle: { fontSize: '12px', color: tw.blue, margin: '0 0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
         name: displayEmoji(p ? p.name : ''), handle: displayEmoji(plHandle(p)), verified: !!(p && p.verified), private: !!(p && p.private),
-        text: this.postMentionNodes(m.text || '', tw.blue), isImage: !!m.image,
+        text: this.postMentionNodes(m.text || '', tw.blue), isImage: mediaGrid.has,
+        hasMedia: mediaGrid.has, mediaStyle: mediaGrid.style, mediaItems: mediaGrid.items,
         bubbleStyle: { fontSize: '15px', lineHeight: 1.4, color: tw.text, whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginTop: '2px' },
         imgStyle: { width: '100%', aspectRatio: String(m.imageAR || 1.333), borderRadius: '16px', marginTop: '10px', backgroundImage: 'url(' + (m.image || '') + ')', backgroundSize: 'cover', backgroundPosition: 'center', border: '1px solid ' + tw.line, display: 'block' },
         ago: (m.ago && String(m.ago).trim()) ? m.ago : '2h',
@@ -6637,11 +6830,13 @@ class Component extends DCLogic {
     const tw0Rt = tw0src ? (Number(plStat(tw0src, 'rt', 48)) || 0) : 0;
     const tw0Like = tw0src ? (Number(plStat(tw0src, 'lk', 320)) || 0) : 0;
     const tw0View = tw0src ? (Number(plStat(tw0src, 'vw', 18400)) || 0) : 0;
+    const tw0Media = plMediaGrid(tw0src, 4, 'twitter', tw.line, tw.bg, '12px');
     const tw0 = tw0src ? {
       avatarStyle: this.avatarVM(tw0p, 44, 17).style,
       avatarText: this.avatarVM(tw0p, 44, 17).text,
       name: displayEmoji(tw0p ? tw0p.name : ''), handle: displayEmoji(plHandle(tw0p)), verified: !!(tw0p && tw0p.verified), private: !!(tw0p && tw0p.private),
-       text: this.postMentionNodes(tw0src.text || '', tw.blue), isImage: !!tw0src.image,
+       text: this.postMentionNodes(tw0src.text || '', tw.blue), isImage: tw0Media.has,
+      hasMedia: tw0Media.has, mediaStyle: tw0Media.style, mediaItems: tw0Media.items,
       imgStyle: {
         width: '100%', aspectRatio: String(tw0src.imageAR || 1.333), borderRadius: '16px', marginTop: '12px',
         backgroundImage: 'url(' + (tw0src.image || '') + ')', backgroundSize: 'cover', backgroundPosition: 'center',
@@ -6649,7 +6844,7 @@ class Component extends DCLogic {
       },
       cRt: plNum(tw0Rt), cLike: plNum(tw0Like), cView: plNum(tw0View),
       showRt: tw0Rt > 0, showLike: tw0Like > 0, showView: tw0View > 0, hasStats: tw0Rt > 0 || tw0Like > 0 || tw0View > 0
-    } : { avatarStyle: {}, avatarText: '', name: '', handle: '', verified: false, private: false, text: '', isImage: false, imgStyle: {}, cRt: '', cLike: '', cView: '', showRt: false, showLike: false, showView: false, hasStats: false };
+    } : { avatarStyle: {}, avatarText: '', name: '', handle: '', verified: false, private: false, text: '', isImage: false, hasMedia: false, mediaStyle: {}, mediaItems: [], imgStyle: {}, cRt: '', cLike: '', cView: '', showRt: false, showLike: false, showView: false, hasStats: false };
 
     /* ── story ── */
     const storyPerson = byId(s.story.author);
@@ -6831,7 +7026,7 @@ class Component extends DCLogic {
     ];
     else toggles = [];
 
-    if (!isStoryScreen && !isLock) {
+    if (!isStoryScreen && !isLock && !isNotif) {
       if (!toggles.some(t => t.label === 'Status bar')) toggles.push(this.toggleVM('Status bar', ui.statusBar, () => this.setUI('statusBar', !ui.statusBar)));
       if (!toggles.some(t => t.label === 'Home indicator')) toggles.push(this.toggleVM('Home indicator', ui.homeBar, () => this.setUI('homeBar', !ui.homeBar)));
     }
@@ -7117,14 +7312,22 @@ class Component extends DCLogic {
       };
     });
 
+    const twPostEditorImages = plPostImages(twPostData, 4);
+    const editorMediaRows = (images, onRemove) => images.map((image, index) => ({
+      wrapStyle: { width: '72px', height: '54px', position: 'relative', flex: 'none' },
+      style: { width: '72px', height: '54px', borderRadius: '9px', backgroundImage: 'url(' + image.src + ')', backgroundSize: 'cover', backgroundPosition: 'center', border: '1px solid var(--color-divider)', boxSizing: 'border-box' },
+      removeStyle: { position: 'absolute', top: '-6px', right: '-6px', width: '20px', height: '20px', padding: 0, border: '1px solid var(--color-divider)', borderRadius: '50%', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '14px', lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+      onRemove: () => onRemove(index)
+    }));
     const twPostEditor = {
       authorOpts: this.segVM(people.map(p => ({ label: p.name, value: p.id })), twPostData.author, v => this.patchTwPost({ author: v })),
       text: twPostData.text || '',
       onText: e => this.patchTwPost({ text: e.target.value }),
-      hasImage: !!twPostData.image,
-      imageStyle: { width: '86px', height: '58px', borderRadius: '10px', backgroundImage: 'url(' + (twPostData.image || '') + ')', backgroundSize: 'cover', backgroundPosition: 'center', border: '1px solid var(--color-divider)' },
-      onImage: e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; this.readImage(f, 1200, (d, ar) => this.patchTwPost({ image: d, imageAR: ar })); },
-      onClearImage: () => this.patchTwPost({ image: null, imageAR: 1.333 }),
+      hasImages: twPostEditorImages.length > 0,
+      imageCount: twPostEditorImages.length,
+      images: editorMediaRows(twPostEditorImages, index => this.removeTwPostImage(index)),
+      onImages: e => { const files = Array.from(e.target.files || []); e.target.value = ''; this.addTwPostImages(files); },
+      onClearImages: () => this.setTwPostImages(() => []),
       statReply: plStatRaw(twPostData, 'r'), statRt: plStatRaw(twPostData, 'rt'), statLike: plStatRaw(twPostData, 'lk'), statView: plStatRaw(twPostData, 'vw'),
       onStatReply: e => this.patchTwPost({ stats: Object.assign({}, twPostData.stats || {}, { r: this.numVal(e.target.value, 0) }) }),
       onStatRt: e => this.patchTwPost({ stats: Object.assign({}, twPostData.stats || {}, { rt: this.numVal(e.target.value, 0) }) }),
@@ -7251,17 +7454,19 @@ class Component extends DCLogic {
      const fbPostSrc = s.messages[0];
      const fbPostAuthorId = fbPostSrc && ui.fbPostAuthor && byId(ui.fbPostAuthor) ? ui.fbPostAuthor : (fbPostSrc ? fbPostSrc.author : (you ? you.id : ''));
      const fbPostP = fbPostSrc ? byId(fbPostAuthorId) : you;
-    const fbPostImg = fbPostSrc && fbPostSrc.image;
+    const fbPostMedia = plMediaGrid(fbPostSrc, 5, 'facebook', fb.line, fb.surface, '0');
+    const fbPostEditorImages = plPostImages(fbPostSrc, 5);
     const fbReactCount = fbPostSrc ? (Number(plStat(fbPostSrc, 'lk', 128)) || 0) : 0;
     const fbCommentCount = fbPostSrc ? (Number(plStat(fbPostSrc, 'r', 24)) || 0) : 0;
     const fbShareCount = fbPostSrc ? (Number(plStat(fbPostSrc, 'rt', 6)) || 0) : 0;
     const fbPost = fbPostSrc ? {
       name: displayEmoji(fbPostP ? fbPostP.name : ''), av: this.avatarVM(fbPostP, 40, 16),
-       text: this.postMentionNodes(fbPostSrc.text || '', fb.blue, { facebook: true }), isImage: !!fbPostImg, ago: ui.twAgo || '2h',
+       text: this.postMentionNodes(fbPostSrc.text || '', fb.blue, { facebook: true }), isImage: fbPostMedia.has, ago: ui.twAgo || '2h',
+      hasMedia: fbPostMedia.has, mediaStyle: fbPostMedia.style, mediaItems: fbPostMedia.items,
       reacts: plNum(fbReactCount), comments: plNum(fbCommentCount) + ' comments', shares: plNum(fbShareCount) + ' shares',
       hasReacts: fbReactCount > 0, hasComments: fbCommentCount > 0, hasShares: fbShareCount > 0,
       showStatDot: fbCommentCount > 0 && fbShareCount > 0, hasStats: fbReactCount > 0 || fbCommentCount > 0 || fbShareCount > 0,
-      imgStyle: { width: '100%', aspectRatio: String(fbPostSrc.imageAR || 1.2), backgroundImage: 'url(' + (fbPostImg || '') + ')', backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: fb.surface, display: 'block' }
+      imgStyle: {}
     } : null;
     const fbInboxUser2 = byId(ui.fbInboxUser) || you;
     /* fb post reactions */
@@ -7681,7 +7886,7 @@ class Component extends DCLogic {
       onFbMutual: e => this.setUI('fbMutual', e.target.value),
       fbProfileAvatar: Object.assign(this.avatarVM(fbPerson, 90, 34).style, { border: '4px solid ' + fb.card }),
       fbProfileAvatarText: this.avatarVM(fbPerson, 90, 34).text,
-      fbCoverStyle: { height: '150px', display: 'block', background: ui.fbBanner ? '#000' : 'linear-gradient(120deg,#0866ff,#7a3ff2)', backgroundImage: ui.fbBanner ? ('url(' + ui.fbBanner + ')') : 'linear-gradient(120deg,#0866ff,#7a3ff2)', backgroundSize: 'cover', backgroundPosition: 'center' },
+      fbCoverStyle: { height: '150px', display: 'block', background: ui.fbBanner ? '#000' : 'linear-gradient(120deg,#0866ff,#7a3ff2)', backgroundImage: ui.fbBanner ? ('url(' + ui.fbBanner + ')') : 'linear-gradient(120deg,#0866ff,#7a3ff2)', backgroundSize: ui.fbBanner ? '100% 100%' : 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' },
       fbProfileNameStyle: { fontSize: '24px', fontWeight: 800, color: fb.text },
       fbProfileFriendsStyle: { fontSize: '14px', color: fb.dim, marginTop: '3px' },
       fbProfileBioStyle: { fontSize: '15px', color: fb.text, marginTop: '10px', lineHeight: 1.4, whiteSpace: 'pre-wrap' },
@@ -7734,9 +7939,14 @@ class Component extends DCLogic {
       fbHasSrc: !!fbPostSrc,
       fbPostEditText: fbPostSrc ? (fbPostSrc.text || '') : '',
       onFbPostText: e => { if (fbPostSrc) this.patchMsg(fbPostSrc.id, { text: e.target.value }); },
-      onFbPostImg: e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (fbPostSrc) this.readImage(f, 1080, (d, ar) => this.patchMsg(fbPostSrc.id, { image: d, imageAR: ar })); },
-      fbPostHasImg: !!(fbPostSrc && fbPostSrc.image),
-      clearFbPostImg: () => { if (fbPostSrc) this.patchMsg(fbPostSrc.id, { image: null }); },
+      onFbPostImages: e => { const files = Array.from(e.target.files || []); e.target.value = ''; if (fbPostSrc) this.addFbPostImages(fbPostSrc.id, files); },
+      fbPostHasImages: fbPostEditorImages.length > 0,
+      fbPostImageCount: fbPostEditorImages.length,
+      fbPostEditorImages: editorMediaRows(fbPostEditorImages, index => { if (fbPostSrc) this.removeFbPostImage(fbPostSrc.id, index); }),
+      clearFbPostImages: () => { if (fbPostSrc) this.setFbPostImages(fbPostSrc.id, () => []); },
+      fbPostShowsOverlay: fbPostEditorImages.length === 5,
+      fbPhotoOverlay: fbPostSrc ? String(fbPostSrc.photoOverlay || '1').replace(/^\+/, '') : '1',
+      onFbPhotoOverlay: e => { if (fbPostSrc) this.patchMsg(fbPostSrc.id, { photoOverlay: e.target.value }); },
       fbLikes: fbPostSrc ? this.numShow(plStatRaw(fbPostSrc, 'lk')) : '',
       fbCommentsN: fbPostSrc ? this.numShow(plStatRaw(fbPostSrc, 'r')) : '',
       fbSharesN: fbPostSrc ? this.numShow(plStatRaw(fbPostSrc, 'rt')) : '',
@@ -7851,11 +8061,12 @@ class Component extends DCLogic {
       overlayWrapStyle: isNotif
         ? { position: 'static', padding: '24px 30px 42px', display: 'flex', flexDirection: 'column' }
         : { position: 'absolute', top: (showStatusBarTop ? '46px' : '10px'), left: '8px', right: '8px', zIndex: 60, display: 'flex', flexDirection: 'column', pointerEvents: 'none' },
-      overlayCardStyle: { marginBottom: isNotif ? '12px' : '8px', flexShrink: 0, display: 'flex', gap: '11px', alignItems: 'flex-start', padding: '12px 14px', borderRadius: (isNotif && ui.cornerRadius != null ? ui.cornerRadius + 'px' : '22px'), background: overlayDark ? (iosOverlayFallback ? 'rgb(44,44,46)' : 'rgba(44,44,46,0.85)') : (iosOverlayFallback ? 'rgb(250,250,252)' : 'rgba(250,250,252,0.85)'), backdropFilter: 'none', WebkitBackdropFilter: 'none', boxShadow: shadowOn && !iosOverlayFallback ? '0 10px 28px rgba(0,0,0,0.22)' : 'none', border: '1px solid ' + (overlayDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)') },
+      overlayCardStyle: { marginBottom: isNotif ? '12px' : '8px', flexShrink: 0, display: 'flex', gap: '11px', alignItems: 'flex-start', padding: '12px 14px', borderRadius: (isNotif && ui.cornerRadius != null ? ui.cornerRadius + 'px' : '22px'), background: isNotif ? (overlayDark ? 'rgb(44,44,46)' : 'rgb(250,250,252)') : (overlayDark ? (iosOverlayFallback ? 'rgb(44,44,46)' : 'rgba(44,44,46,0.85)') : (iosOverlayFallback ? 'rgb(250,250,252)' : 'rgba(250,250,252,0.85)')), backdropFilter: 'none', WebkitBackdropFilter: 'none', boxShadow: shadowOn && !iosOverlayFallback ? '0 10px 28px rgba(0,0,0,0.22)' : 'none', border: '1px solid ' + (overlayDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)') },
+      overlayMirrorStyle: { display: isNotif ? 'none' : 'block' },
       overlayTitleStyle: { fontSize: '15px', fontWeight: 700, color: overlayDark ? '#fff' : '#000', lineHeight: 1.3 },
       overlaySubStyle: { fontSize: '14px', fontWeight: 600, color: overlayDark ? '#fff' : '#000', lineHeight: 1.3 },
       overlayTextStyle: { fontSize: '14px', color: overlayDark ? 'rgba(255,255,255,.9)' : 'rgba(0,0,0,.72)', lineHeight: 1.32, marginTop: '1px' },
-      overlayTimeStyle: { fontSize: '13px', color: overlayDark ? 'rgba(255,255,255,.6)' : 'rgba(0,0,0,.45)', flex: 'none' },
+      overlayTimeStyle: { fontSize: '13px', color: overlayDark ? '#fff' : 'rgba(0,0,0,.45)', flex: 'none', marginLeft: 'auto' },
       overlayNotifRows: (ui.overlayNotifs || []).map((n, idx) => ({
         id: n.id, app: n.app, appName: n.appName || '', appColor: n.appColor || '#8e8e93', title: n.title || '', sub: n.sub || '', text: n.text || '', time: n.time || '',
         isCustom: n.app === 'custom', hasPerson: !!n.personId, noPerson: !n.personId, personHint: n.app === 'messages' ? 'Name & photo from the selected person' : 'Name from the selected person; the app icon stays full size', hasAppImage: !!n.appImage, appImageStyle: notifImagePreviewStyle(n.appImage),
@@ -7955,7 +8166,7 @@ class Component extends DCLogic {
         initials: igAvA.text, verified: !!(igPerson && igPerson.verified), private: !!(igPerson && igPerson.private),
         bio: igPerson ? (igPerson.bio || '') : '',
         posts: (() => {
-          const raw = ui.igPostsCount;
+          const raw = igPerson ? igPerson.postsCount : undefined;
           const blank = raw === '' || raw === undefined || raw === null;
           return plNum(blank ? igPosts.length : (Number(raw) || 0));
         })(),
@@ -8078,7 +8289,7 @@ class Component extends DCLogic {
       onMockupFont: e => { this._fontCSS = null; this.setUI('mockupFont', e.target.value); },
       statusBarStyle: statusBarStyle,
       wifiIconSrc: wifiIconSrc,
-      showStatusBar: !isStoryScreen && !isLock && !!ui.statusBar,
+      showStatusBar: !isStoryScreen && !isLock && !isNotif && !!ui.statusBar,
       showHeader: ui.header,
       showInputBar: ui.inputBar && !ui.blocked,
       showBlockedActions: !!ui.blocked && (isIG || isFbMsg || (isTW && twIsDm)),
@@ -8090,7 +8301,7 @@ class Component extends DCLogic {
       blockedActionStyle: { minHeight: '58px', marginTop: '10px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: (isFbMsg && fbd) || (isIG && igDark) || (isTW && twDark) ? '#1c1c1c' : (isTW ? '#eff3f4' : (isFbMsg ? fb.bub : ig.bub)), color: isTW ? tw.text : (isFbMsg ? fb.text : ig.txt), fontSize: '18px', fontWeight: 800 },
       showTyping: ui.typing,
       showDate: !!ui.dateLabel,
-      showHomeBar: !!ui.homeBar && !isLock && !isStoryScreen,
+      showHomeBar: !!ui.homeBar && !isLock && !isStoryScreen && !isNotif,
       homeBarWrap: { display: 'flex', justifyContent: 'center', padding: '7px 0 9px', background: homeBarBg },
       homeBarStyle: { width: '134px', height: '5px', borderRadius: '3px', background: chromeDark ? '#fff' : '#000', opacity: .9, display: 'block' },
       dot1: dotBase(0), dot2: dotBase(0.18), dot3: dotBase(0.36),
@@ -8210,7 +8421,9 @@ class Component extends DCLogic {
         height: '140px', display: 'block',
         background: twBanner ? '#000' : 'linear-gradient(120deg,#f4a6c4,#a6c8f4)',
         backgroundImage: twBanner ? 'url(' + twBanner + ')' : 'linear-gradient(120deg,#f4a6c4,#a6c8f4)',
-        backgroundSize: 'cover', backgroundPosition: 'center'
+        // Banner uploads are already cropped to this exact box ratio. A second
+        // cover fit can magnify the bitmap again on affected browsers.
+        backgroundSize: twBanner ? '100% 100%' : 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat'
       },
       twProfileAvatar: Object.assign(this.avatarVM(twPerson, 84, 32).style, { border: '4px solid ' + tw.bg }),
       twProfile: {
@@ -8324,22 +8537,17 @@ class Component extends DCLogic {
       /* instagram controls */
       showProfileRow: isTW || igScreen,
       igProfileOpts: people.map(p => ({
-        label: p.name, onPick: () => this.setUI('igProfileId', p.id),
-        style: {
-          padding: '7px 13px', fontSize: '12px', cursor: 'pointer', borderRadius: '999px',
-          fontFamily: 'var(--font-heading)', fontWeight: 700,
-          border: '1px solid ' + (ui.igProfileId === p.id ? 'var(--color-accent)' : 'var(--color-divider)'),
-          background: ui.igProfileId === p.id ? 'var(--color-accent)' : 'var(--color-surface)',
-          color: ui.igProfileId === p.id ? '#3a2530' : 'var(--color-text)'
-        }
+        label: p.name, value: p.id
       })),
+      igProfileId: igPerson ? igPerson.id : '',
+      onIgProfileSelect: e => this.setUI('igProfileId', e.target.value),
       igViewOpts: this.segVM([
         { label: 'This is me', value: 'own' }, { label: 'Follow', value: 'follow' }, { label: 'Follow back', value: 'followback' }, { label: 'Following', value: 'following' }
       ], igView, v => this.setUI('igView', v)),
       igBio: igPerson ? (igPerson.bio || '') : '',
       onIgBio: e => this.patchPerson(igPerson.id, { bio: e.target.value }),
-      igPostsVal: (ui.igPostsCount === undefined || ui.igPostsCount === null) ? '' : ui.igPostsCount,
-      onIgPosts: e => this.setUI('igPostsCount', e.target.value),
+      igPostsVal: (!igPerson || igPerson.postsCount === undefined || igPerson.postsCount === null) ? '' : igPerson.postsCount,
+      onIgPosts: e => { if (igPerson) this.patchPerson(igPerson.id, { postsCount: e.target.value }); },
       igPostsPlaceholder: String(igPosts.length),
       igFollowers: igPerson ? this.numShow(igPerson.followers) : '',
       igFollowing: igPerson ? this.numShow(igPerson.following) : '',
@@ -8478,8 +8686,10 @@ class Component extends DCLogic {
           wrapStyle: { display: 'flex', alignItems: 'center', width: 'calc(100% - ' + ((w.depth || 0) * 14) + 'px)', marginLeft: ((w.depth || 0) * 14) + 'px', flex: 'none', borderRadius: '12px', border: '1px solid ' + (active ? 'var(--color-accent)' : 'var(--color-divider)'), background: active ? 'var(--color-accent-100)' : 'transparent' },
           tabStyle: { flex: 1, minWidth: 0, textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer', padding: '7px 10px', fontSize: '12px', fontWeight: active ? 700 : 500, color: active ? 'var(--color-accent-700)' : 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
           canDelete: (s.worlds || []).length > 1,
+          dupStyle: { border: 'none', background: 'transparent', cursor: 'pointer', padding: '6px 7px 6px 2px', fontSize: '14px', lineHeight: 1, flex: 'none', color: active ? 'var(--color-accent-700)' : 'color-mix(in srgb, var(--color-text) 55%, transparent)' },
           delStyle: { border: 'none', background: 'transparent', cursor: 'pointer', padding: '6px 9px 6px 2px', fontSize: '13px', lineHeight: 1, flex: 'none', color: active ? 'var(--color-accent-700)' : 'color-mix(in srgb, var(--color-text) 55%, transparent)' },
           onSelect: () => this.switchWorld(w.id),
+          onDuplicate: () => this.duplicateWorld(w.id),
           onDelete: () => this.deleteWorld(w.id)
         };
       }),
