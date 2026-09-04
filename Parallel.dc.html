@@ -2834,6 +2834,7 @@
                 <span style="font-size:12px;line-height:1.45;color:color-mix(in srgb, var(--color-text) 58%, transparent)">{{ mediaUsageLabel }}</span>
                 <button class="btn btn-secondary" style="margin-left:auto;border-radius:999px;padding:4px 9px;font-size:11px" onClick="{{ refreshMediaUsage }}" disabled="{{ mediaUsageLoading }}">Refresh</button>
               </div>
+              <p style="margin:0;font-size:11px;line-height:1.45;color:color-mix(in srgb, var(--color-text) 52%, transparent)">Photos you replace or remove from every folder are automatically deleted from cloud storage and stop counting toward your usage. Very recent uploads may remain briefly while saves finish safely.</p>
             </div>
 
             <div>
@@ -5673,13 +5674,12 @@ class Component extends DCLogic {
   }
   async syncMediaReferences(payload) {
     const urls = this.mediaUrlsIn(payload);
-    for (let i = 0; i < urls.length; i += 500) {
-      await this.mediaRequest('/v1/media/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ urls: urls.slice(i, i + 500) })
-      });
-    }
+    const result = await this.mediaRequest('/v1/media/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ urls: urls, reconcile: true })
+    });
+    if (result && result.usage) this.setState({ mediaUsage: result.usage, mediaUsageState: 'ready' });
   }
   async uploadPhoto(dataUrl) {
     const u = this.state.user;
